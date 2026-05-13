@@ -65,7 +65,8 @@
       "Bash(curl *)",
       "Bash(git commit -m 'fix\\(SCRUM-56\\): rugcheck API mapping wrong — all checks returned safe *)",
       "Skill(claude-api)",
-      "Bash(git commit -m 'feat\\(SCRUM-57\\): Claude API pool analyzer with structured JSON output *)"
+      "Bash(git commit -m 'feat\\(SCRUM-57\\): Claude API pool analyzer with structured JSON output *)",
+      "Bash(git commit -m 'feat: integrate Claude pool analysis into app *)"
     ]
   }
 }

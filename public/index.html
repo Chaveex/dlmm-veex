@@ -253,6 +253,49 @@
       max-width: 200px;
     }
 
+    .ai-result {
+      font-size: 0.82em;
+      min-width: 180px;
+    }
+
+    .ai-score {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .score-bar {
+      flex: 1;
+      height: 6px;
+      background: #e9ecef;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.4s;
+    }
+
+    .score-fill.high   { background: #28a745; }
+    .score-fill.mid    { background: #ffc107; }
+    .score-fill.low    { background: #dc3545; }
+
+    .badge-open  { background: #d4edda; color: #155724; }
+    .badge-watch { background: #fff3cd; color: #856404; }
+    .badge-skip  { background: #f8d7da; color: #721c24; }
+    .badge-mid   { background: #d1ecf1; color: #0c5460; }
+
+    .ai-raisonnement {
+      font-size: 0.78em;
+      color: #555;
+      margin-top: 4px;
+      font-style: italic;
+      max-width: 220px;
+    }
+
     tbody tr:hover {
       background: #f8f9fa;
     }
@@ -419,6 +462,10 @@
               Security
               <span class="tooltip-icon" data-tooltip="Token security: mint authority, freeze authority, holder concentration, contract age">?</span>
             </th>
+            <th>
+              AI Analysis
+              <span class="tooltip-icon" data-tooltip="Claude AI: score 0-10, conviction, recommendation, optimal range">?</span>
+            </th>
           </tr>
         </thead>
         <tbody id="poolsBody">
@@ -494,6 +541,12 @@
                 onclick="checkSecurity(this)"
               >Check</button>
             </td>
+            <td id="ai-${escapeHtml(pool.address)}">
+              <button class="btn-check"
+                data-pool-json="${escapeHtml(JSON.stringify(pool))}"
+                onclick="analyzeWithAI(this)"
+              >Analyze</button>
+            </td>
           </tr>
         `).join('');
 
@@ -559,6 +612,50 @@
     document.getElementById('searchName').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') fetchData(1);
     });
+
+    async function analyzeWithAI(btn) {
+      const poolData = JSON.parse(btn.dataset.poolJson);
+      const cell = document.getElementById('ai-' + poolData.address);
+      if (!cell) return;
+
+      cell.innerHTML = '<span class="badge badge-pending">Analyzing…</span>';
+
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(poolData),
+        });
+
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error);
+
+        const d = json.data;
+        const scoreColor = d.score >= 7 ? 'high' : d.score >= 4 ? 'mid' : 'low';
+        const scorePct = (d.score / 10 * 100).toFixed(0);
+
+        cell.innerHTML = `
+          <div class="ai-result">
+            <div class="ai-score">
+              <strong>${d.score.toFixed(1)}</strong>
+              <div class="score-bar"><div class="score-fill ${scoreColor}" style="width:${scorePct}%"></div></div>
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+              <span class="badge badge-${d.recommandation}">${d.recommandation}</span>
+              <span class="badge badge-${d.conviction === 'high' ? 'safe' : d.conviction === 'mid' ? 'mid' : 'pending'}">${d.conviction}</span>
+            </div>
+            <div style="font-size:0.78em;color:#666;">
+              Bin: ${d.bin_step_optimal}bps &nbsp;|&nbsp;
+              Range: ${d.range_suggeree.min.toFixed(2)} – ${d.range_suggeree.max.toFixed(2)}
+            </div>
+            <div class="ai-raisonnement">${escapeHtml(d.raisonnement)}</div>
+          </div>
+        `;
+      } catch (err) {
+        cell.innerHTML = `<span class="badge badge-danger">Error</span><div class="security-flags">${escapeHtml(err.message)}</div>`;
+      }
+    }
 
     async function checkSecurity(btn) {
       const poolAddress = btn.dataset.pool;
