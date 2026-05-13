@@ -183,34 +183,39 @@
       line-height: 16px;
       font-size: 0.8em;
       font-weight: bold;
+      z-index: 10;
     }
 
     .tooltip-icon:hover::after {
       content: attr(data-tooltip);
-      position: absolute;
-      bottom: 125%;
+      position: fixed;
+      bottom: auto;
+      top: 80px;
       left: 50%;
       transform: translateX(-50%);
       background: #333;
       color: white;
-      padding: 8px 12px;
+      padding: 10px 14px;
       border-radius: 6px;
       font-size: 0.85em;
       font-weight: normal;
       white-space: nowrap;
-      z-index: 1000;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      pointer-events: none;
     }
 
     .tooltip-icon:hover::before {
       content: '';
-      position: absolute;
-      bottom: 115%;
+      position: fixed;
+      bottom: auto;
+      top: 70px;
       left: 50%;
       transform: translateX(-50%);
-      border: 5px solid transparent;
+      border: 6px solid transparent;
       border-top-color: #333;
-      z-index: 1000;
+      z-index: 9999;
+      pointer-events: none;
     }
 
     td {
