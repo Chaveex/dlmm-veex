@@ -1,11 +1,14 @@
+import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import axios from 'axios';
 import { PoolData } from './types';
 import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
 import { checkPoolSecurity } from './tokenSecurity';
+import { analyzePool } from './poolAnalysis';
 
 const app = express();
+app.use(express.json());
 const PORT = 3000;
 
 app.use(express.static(path.join(__dirname, '../public')));
@@ -141,6 +144,30 @@ app.get('/api/security', async (req, res) => {
 
   try {
     const result = await checkPoolSecurity({ poolAddress, tokenXMint, tokenYMint });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.post('/api/analyze', async (req, res) => {
+  const pool: PoolData = req.body;
+
+  if (!pool?.address || !pool?.pair) {
+    res.status(400).json({ success: false, error: 'pool data required' });
+    return;
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(503).json({ success: false, error: 'ANTHROPIC_API_KEY not configured' });
+    return;
+  }
+
+  try {
+    const result = await analyzePool(pool);
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({
