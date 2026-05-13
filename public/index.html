@@ -246,6 +246,17 @@
     .btn-check:hover { background: #667eea; color: white; }
     .btn-check:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    .btn-calc {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9em;
+      opacity: 0.5;
+      padding: 0;
+      transition: opacity 0.15s;
+    }
+    .btn-calc:hover { opacity: 1; }
+
     .security-flags {
       font-size: 0.78em;
       color: #666;
@@ -346,6 +357,187 @@
       color: #666;
       font-weight: 600;
     }
+
+    .calc-card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-top: 30px;
+      overflow: hidden;
+    }
+
+    .calc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 30px;
+      cursor: pointer;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .calc-header h2 { margin: 0; color: #333; font-size: 1.4em; }
+
+    #calcBody { padding: 24px 30px; }
+
+    .calc-modes { display: flex; gap: 8px; margin-bottom: 20px; }
+
+    .mode-btn {
+      background: #e9ecef;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 600;
+      color: #495057;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .mode-btn.active { background: #667eea; color: white; }
+
+    .calc-inputs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.85em;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 6px;
+    }
+
+    .calc-results { margin-top: 4px; }
+
+    .verdict-banner {
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1.1em;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .verdict-excellent { background: #d4edda; color: #155724; }
+    .verdict-decent    { background: #fff3cd; color: #856404; }
+    .verdict-low       { background: #f8d7da; color: #721c24; }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .metric-box {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 14px;
+    }
+
+    .metric-label { font-size: 0.78em; color: #666; font-weight: 600; margin-bottom: 6px; }
+    .metric-value { font-size: 1.4em; font-weight: 700; color: #333; font-family: monospace; }
+
+    .revenue-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .revenue-box {
+      background: linear-gradient(135deg, #667eea11 0%, #764ba211 100%);
+      border: 1px solid #667eea33;
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .revenue-value { font-size: 1.3em; font-weight: 700; color: #667eea; font-family: monospace; }
+
+    .formulas {
+      margin-top: 16px;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .formulas summary {
+      padding: 10px 16px;
+      cursor: pointer;
+      background: #f8f9fa;
+      font-weight: 600;
+      font-size: 0.9em;
+      color: #495057;
+    }
+
+    .formulas pre {
+      margin: 0;
+      padding: 16px;
+      font-size: 0.82em;
+      line-height: 1.7;
+      background: #fff;
+      color: #333;
+      white-space: pre-wrap;
+    }
+
+    .compare-slot {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .compare-slot-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .compare-slot input[type="text"] {
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      font-size: 1em;
+      color: #333;
+      padding: 0;
+      width: 160px;
+    }
+
+    .compare-slot input[type="text"]:focus { outline: none; border-bottom: 2px solid #667eea; }
+
+    .compare-slot-inputs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .btn-add-pool {
+      background: none;
+      border: 2px dashed #667eea;
+      color: #667eea;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    .btn-add-pool:hover { background: #667eea11; }
+
+    .btn-remove { background: none; border: none; color: #dc3545; cursor: pointer; font-size: 1.2em; padding: 0; }
+
+    .compare-results-table { width: 100%; border-collapse: collapse; }
+    .compare-results-table th, .compare-results-table td { padding: 10px 12px; text-align: right; border-bottom: 1px solid #e9ecef; }
+    .compare-results-table th { background: #f8f9fa; font-weight: 600; color: #495057; font-size: 0.85em; }
+    .compare-results-table td:first-child, .compare-results-table th:first-child { text-align: left; }
 
     @media (max-width: 768px) {
       .table-wrapper {
@@ -481,6 +673,108 @@
       <span id="pageInfo"></span>
       <button onclick="nextPage()" id="nextBtn">Next →</button>
     </div>
+
+    <!-- ── PROFITABILITY CALCULATOR ── -->
+    <div class="calc-card" id="calculator">
+      <div class="calc-header" onclick="toggleCalc()">
+        <h2>💰 Pool Profitability Calculator</h2>
+        <span id="calcToggle">▼</span>
+      </div>
+
+      <div id="calcBody">
+        <!-- Mode switch -->
+        <div class="calc-modes">
+          <button class="mode-btn active" id="modeSingle" onclick="setMode('single')">Single Pool</button>
+          <button class="mode-btn" id="modeCompare" onclick="setMode('compare')">Compare Pools</button>
+        </div>
+
+        <!-- Single mode -->
+        <div id="singleMode">
+          <div class="calc-inputs">
+            <div class="input-group">
+              <label>TVL (USD)</label>
+              <input type="number" id="cTvl" placeholder="1000000" oninput="calcUpdate()" min="0">
+            </div>
+            <div class="input-group">
+              <label>Volume 24h (USD)</label>
+              <input type="number" id="cVolume" placeholder="5000000" oninput="calcUpdate()" min="0">
+            </div>
+            <div class="input-group">
+              <label>Fees 24h (USD)</label>
+              <input type="number" id="cFees" placeholder="10000" oninput="calcUpdate()" min="0">
+            </div>
+            <div class="input-group">
+              <label>My Capital (USD)</label>
+              <input type="number" id="cCapital" placeholder="10000" oninput="calcUpdate()" min="0">
+            </div>
+          </div>
+
+          <div id="calcResults" class="calc-results" style="display:none">
+            <div class="verdict-banner" id="verdictBanner"></div>
+
+            <div class="metrics-grid">
+              <div class="metric-box">
+                <div class="metric-label">Score</div>
+                <div class="metric-value" id="mScore">–</div>
+                <div class="score-bar"><div class="score-fill" id="mScoreBar" style="width:0%"></div></div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Estimated APR</div>
+                <div class="metric-value" id="mApr">–</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Real Fee Rate</div>
+                <div class="metric-value" id="mFeeRate">–</div>
+              </div>
+              <div class="metric-box">
+                <div class="metric-label">Volume/TVL</div>
+                <div class="metric-value" id="mVtv">–</div>
+              </div>
+            </div>
+
+            <div class="revenue-grid">
+              <div class="revenue-box">
+                <div class="metric-label">My Daily Revenue</div>
+                <div class="revenue-value" id="mDaily">–</div>
+              </div>
+              <div class="revenue-box">
+                <div class="metric-label">My Monthly</div>
+                <div class="revenue-value" id="mMonthly">–</div>
+              </div>
+              <div class="revenue-box">
+                <div class="metric-label">My Annual</div>
+                <div class="revenue-value" id="mAnnual">–</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulas (collapsible) -->
+          <details class="formulas">
+            <summary>📐 Formulas</summary>
+            <pre>Real fee rate   = Fees 24h / Volume 24h × 100
+Volume/TVL      = Volume 24h / TVL
+Estimated APR   = (Fees 24h × 365 / TVL) × 100
+My daily rev.   = Fees 24h × (My Capital / TVL)
+
+Score (0–100):
+  = (VTV score × 0.50) + (APR score × 0.35) + (Fee rate score × 0.15)
+  VTV score      = clamp((vtv / 3) × 100, 0, 100)
+  APR score      = clamp((apr / 300) × 100, 0, 100)
+  Fee rate score = clamp((fee% / 0.5) × 100, 0, 100)
+
+Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</pre>
+          </details>
+        </div>
+
+        <!-- Compare mode -->
+        <div id="compareMode" style="display:none">
+          <div id="compareSlots"></div>
+          <button class="btn-add-pool" onclick="addCompareSlot()">+ Add Pool</button>
+          <div id="compareResults"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -530,7 +824,10 @@
         // Render table
         bodyEl.innerHTML = pools.map(pool => `
           <tr id="row-${escapeHtml(pool.address)}">
-            <td class="pair">${escapeHtml(pool.pair)}</td>
+            <td class="pair">
+              ${escapeHtml(pool.pair)}
+              <br><button class="btn-calc" data-address="${escapeHtml(pool.address)}" onclick="fillCalculatorFromBtn(this)" title="Open in calculator">📊</button>
+            </td>
             <td class="address">${escapeHtml(pool.address)}</td>
             <td class="number">$${formatNumber(pool.tvl)}</td>
             <td class="number">$${formatNumber(pool.fees24h)}</td>
@@ -767,6 +1064,154 @@
       } catch (err) {
         cell.innerHTML = `<span class="badge badge-danger">Error</span><div class="security-flags">${escapeHtml(err.message)}</div>`;
       }
+    }
+
+    // ── PROFITABILITY CALCULATOR ──
+
+    let calcOpen = true;
+    let calcMode = 'single';
+    let compareSlots = [];
+
+    function toggleCalc() {
+      calcOpen = !calcOpen;
+      document.getElementById('calcBody').style.display = calcOpen ? 'block' : 'none';
+      document.getElementById('calcToggle').textContent = calcOpen ? '▼' : '▶';
+    }
+
+    function setMode(mode) {
+      calcMode = mode;
+      document.getElementById('singleMode').style.display = mode === 'single' ? 'block' : 'none';
+      document.getElementById('compareMode').style.display = mode === 'compare' ? 'block' : 'none';
+      document.getElementById('modeSingle').classList.toggle('active', mode === 'single');
+      document.getElementById('modeCompare').classList.toggle('active', mode === 'compare');
+      if (mode === 'compare' && compareSlots.length === 0) addCompareSlot(), addCompareSlot();
+    }
+
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+    function computeMetrics(tvl, volume24h, fees24h, myCapital) {
+      const realFeeRate = volume24h > 0 ? (fees24h / volume24h) * 100 : 0;
+      const vtv = tvl > 0 ? volume24h / tvl : 0;
+      const apr = tvl > 0 ? (fees24h * 365 / tvl) * 100 : 0;
+      const share = tvl > 0 ? myCapital / tvl : 0;
+      const daily = fees24h * share;
+
+      const vtvScore  = clamp((vtv / 3) * 100, 0, 100);
+      const aprScore  = clamp((apr / 300) * 100, 0, 100);
+      const feeScore  = clamp((realFeeRate / 0.5) * 100, 0, 100);
+      const score = vtvScore * 0.50 + aprScore * 0.35 + feeScore * 0.15;
+      const verdict = score >= 70 ? 'excellent' : score >= 40 ? 'decent' : 'low';
+
+      return { realFeeRate, vtv, apr, daily, monthly: daily * 30, annual: daily * 365, score, verdict };
+    }
+
+    function calcUpdate() {
+      const tvl      = parseFloat(document.getElementById('cTvl').value) || 0;
+      const volume   = parseFloat(document.getElementById('cVolume').value) || 0;
+      const fees     = parseFloat(document.getElementById('cFees').value) || 0;
+      const capital  = parseFloat(document.getElementById('cCapital').value) || 0;
+
+      if (tvl === 0 && volume === 0 && fees === 0) {
+        document.getElementById('calcResults').style.display = 'none';
+        return;
+      }
+
+      const m = computeMetrics(tvl, volume, fees, capital);
+      document.getElementById('calcResults').style.display = 'block';
+
+      const verdictLabels = { excellent: '🟢 Excellent pool', decent: '🟡 Decent pool', low: '🔴 Low yield pool' };
+      const banner = document.getElementById('verdictBanner');
+      banner.textContent = verdictLabels[m.verdict];
+      banner.className = `verdict-banner verdict-${m.verdict}`;
+
+      document.getElementById('mScore').textContent = m.score.toFixed(1) + ' / 100';
+      const bar = document.getElementById('mScoreBar');
+      bar.style.width = m.score + '%';
+      bar.className = `score-fill ${m.score >= 70 ? 'high' : m.score >= 40 ? 'mid' : 'low'}`;
+
+      document.getElementById('mApr').textContent = m.apr.toFixed(2) + '%';
+      document.getElementById('mFeeRate').textContent = m.realFeeRate.toFixed(4) + '%';
+      document.getElementById('mVtv').textContent = m.vtv.toFixed(2) + 'x';
+      document.getElementById('mDaily').textContent = '$' + formatNumber(m.daily);
+      document.getElementById('mMonthly').textContent = '$' + formatNumber(m.monthly);
+      document.getElementById('mAnnual').textContent = '$' + formatNumber(m.annual);
+    }
+
+    function fillCalculatorFromBtn(btn) {
+      const pool = poolsCache[btn.dataset.address];
+      if (pool) fillCalculator(pool);
+    }
+
+    // Auto-fill from pool row click
+    function fillCalculator(pool) {
+      document.getElementById('cTvl').value = pool.tvl;
+      document.getElementById('cVolume').value = pool.volume24h;
+      document.getElementById('cFees').value = pool.fees24h;
+      const capital = parseFloat(document.getElementById('cCapital').value) || 10000;
+      document.getElementById('cCapital').value = capital;
+      calcUpdate();
+      document.getElementById('calculator').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Compare mode
+    let slotId = 0;
+
+    function addCompareSlot(pool = null) {
+      const id = slotId++;
+      compareSlots.push(id);
+      const el = document.createElement('div');
+      el.className = 'compare-slot';
+      el.id = `slot-${id}`;
+      el.innerHTML = `
+        <div class="compare-slot-header">
+          <input type="text" value="${pool ? escapeHtml(pool.pair) : 'Pool ' + (id + 1)}" id="slotLabel-${id}" oninput="renderCompareResults()">
+          <button class="btn-remove" onclick="removeSlot(${id})">✕</button>
+        </div>
+        <div class="compare-slot-inputs">
+          <div class="input-group"><label>TVL</label><input type="number" id="sTvl-${id}" value="${pool ? pool.tvl : ''}" placeholder="TVL" oninput="renderCompareResults()" min="0"></div>
+          <div class="input-group"><label>Vol 24h</label><input type="number" id="sVol-${id}" value="${pool ? pool.volume24h : ''}" placeholder="Volume" oninput="renderCompareResults()" min="0"></div>
+          <div class="input-group"><label>Fees 24h</label><input type="number" id="sFee-${id}" value="${pool ? pool.fees24h : ''}" placeholder="Fees" oninput="renderCompareResults()" min="0"></div>
+          <div class="input-group"><label>My Capital</label><input type="number" id="sCap-${id}" value="10000" placeholder="Capital" oninput="renderCompareResults()" min="0"></div>
+        </div>`;
+      document.getElementById('compareSlots').appendChild(el);
+      renderCompareResults();
+    }
+
+    function removeSlot(id) {
+      compareSlots = compareSlots.filter(s => s !== id);
+      document.getElementById(`slot-${id}`).remove();
+      renderCompareResults();
+    }
+
+    function renderCompareResults() {
+      const rows = compareSlots.map(id => {
+        const label  = document.getElementById(`slotLabel-${id}`)?.value || `Pool ${id}`;
+        const tvl    = parseFloat(document.getElementById(`sTvl-${id}`)?.value) || 0;
+        const vol    = parseFloat(document.getElementById(`sVol-${id}`)?.value) || 0;
+        const fee    = parseFloat(document.getElementById(`sFee-${id}`)?.value) || 0;
+        const cap    = parseFloat(document.getElementById(`sCap-${id}`)?.value) || 0;
+        return { label, tvl, vol, fee, cap, ...computeMetrics(tvl, vol, fee, cap) };
+      }).sort((a, b) => b.score - a.score);
+
+      const icons = { excellent: '🟢', decent: '🟡', low: '🔴' };
+      const html = `
+        <table class="compare-results-table">
+          <thead><tr>
+            <th>#</th><th>Pool</th><th>Score</th><th>APR</th><th>Vol/TVL</th><th>Daily $</th><th>Annual $</th>
+          </tr></thead>
+          <tbody>${rows.map((r, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${icons[r.verdict]} ${escapeHtml(r.label)}</td>
+              <td><strong>${r.score.toFixed(1)}</strong></td>
+              <td>${r.apr.toFixed(1)}%</td>
+              <td>${r.vtv.toFixed(2)}x</td>
+              <td>$${formatNumber(r.daily)}</td>
+              <td>$${formatNumber(r.annual)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`;
+      document.getElementById('compareResults').innerHTML = html;
     }
 
     // Global tooltip logic

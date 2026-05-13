@@ -71,7 +71,8 @@
       "Bash(git commit -m 'fix: Analyze button broken — data-pool-json attribute corruption *)",
       "Bash(git commit -m 'feat: add .env support via dotenv *)",
       "Bash(git commit -m 'feat\\(SCRUM-56\\): batch pool analyzer with retry and rate limit handling *)",
-      "Bash(git commit -m 'feat: add Analyze All button triggering batch analysis on current pools *)"
+      "Bash(git commit -m 'feat: add Analyze All button triggering batch analysis on current pools *)",
+      "Bash(git commit -m 'feat\\(SCRUM-58\\): pool profitability calculator *)"
     ]
   }
 }
