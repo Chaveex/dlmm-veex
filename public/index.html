@@ -159,8 +159,6 @@
     thead {
       background: #f8f9fa;
       border-bottom: 2px solid #e9ecef;
-      position: relative;
-      z-index: 100;
     }
 
     th {
@@ -169,54 +167,47 @@
       font-weight: 600;
       color: #495057;
       font-size: 0.95em;
-      position: relative;
-      cursor: help;
-      overflow: visible;
     }
 
     .tooltip-icon {
-      position: relative;
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       margin-left: 4px;
       width: 16px;
       height: 16px;
       background: #667eea;
       color: white;
       border-radius: 50%;
-      text-align: center;
-      line-height: 16px;
       font-size: 0.8em;
       font-weight: bold;
+      cursor: help;
+      vertical-align: middle;
     }
 
-    .tooltip-icon:hover::after {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: 120%;
-      left: 50%;
-      transform: translateX(-50%);
+    #global-tooltip {
+      display: none;
+      position: fixed;
       background: #333;
       color: white;
-      padding: 10px 14px;
+      padding: 8px 12px;
       border-radius: 6px;
       font-size: 0.85em;
-      font-weight: normal;
       white-space: nowrap;
-      z-index: 10000;
+      z-index: 99999;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       pointer-events: none;
+      transform: translateX(-50%);
     }
 
-    .tooltip-icon:hover::before {
+    #global-tooltip::after {
       content: '';
       position: absolute;
-      bottom: 108%;
+      top: 100%;
       left: 50%;
       transform: translateX(-50%);
       border: 6px solid transparent;
       border-top-color: #333;
-      z-index: 10000;
-      pointer-events: none;
     }
 
     td {
@@ -309,6 +300,7 @@
   </style>
 </head>
 <body>
+  <div id="global-tooltip"></div>
   <div class="container">
     <header>
       <h1>🌊 DLMM Pool Data Viewer</h1>
@@ -516,6 +508,33 @@
     });
     document.getElementById('searchName').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') fetchData(1);
+    });
+
+    // Global tooltip logic
+    const globalTooltip = document.getElementById('global-tooltip');
+
+    document.addEventListener('mouseover', (e) => {
+      const icon = e.target.closest('.tooltip-icon');
+      if (!icon) return;
+      const text = icon.getAttribute('data-tooltip');
+      if (!text) return;
+
+      globalTooltip.textContent = text;
+      globalTooltip.style.display = 'block';
+
+      const rect = icon.getBoundingClientRect();
+      const tipWidth = globalTooltip.offsetWidth;
+      const left = rect.left + rect.width / 2;
+      const top = rect.top - globalTooltip.offsetHeight - 10 + window.scrollY;
+
+      globalTooltip.style.left = left + 'px';
+      globalTooltip.style.top = top + 'px';
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      if (e.target.closest('.tooltip-icon')) {
+        globalTooltip.style.display = 'none';
+      }
     });
   </script>
 </body>
