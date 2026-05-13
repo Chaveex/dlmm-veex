@@ -12,41 +12,52 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 const API_URL = 'https://dlmm.datapi.meteora.ag/pools';
 
+const PAGE_SIZE = 50;
+const SEARCH_PAGES = 10; // fetch 10 pages = 500 pools for name search
+
 app.get('/api/pairs', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = 50;
-    const offset = (page - 1) * limit;
     const searchAddress = (req.query.address as string)?.toLowerCase() || '';
     const searchName = (req.query.name as string)?.toLowerCase() || '';
 
-    const response = await axios.get<any>(API_URL, {
-      params: {
-        offset,
-        limit: Math.min(limit, 100),
-      },
-    });
+    let pools: PoolData[];
+    let total: number;
 
-    if (!response.data?.data) {
-      throw new Error('Invalid API response');
-    }
-
-    let pools = response.data.data.map(extractPoolData).filter((p: PoolData | null) => p) as PoolData[];
-
-    if (searchAddress) {
-      pools = pools.filter((p: PoolData) => p.address.toLowerCase().includes(searchAddress));
-    }
     if (searchName) {
-      pools = pools.filter((p: PoolData) => p.pair.toLowerCase().includes(searchName));
+      // API has no name filter — fetch SEARCH_PAGES in parallel, filter, paginate manually
+      const pageRequests = Array.from({ length: SEARCH_PAGES }, (_, i) =>
+        axios.get<any>(API_URL, { params: { page: i + 1, page_size: PAGE_SIZE } })
+      );
+      const responses = await Promise.allSettled(pageRequests);
+
+      const all: PoolData[] = [];
+      for (const r of responses) {
+        if (r.status === 'fulfilled' && r.value.data?.data) {
+          const extracted = r.value.data.data
+            .map(extractPoolData)
+            .filter((p: PoolData | null) => p) as PoolData[];
+          all.push(...extracted);
+        }
+      }
+
+      const filtered = all.filter((p: PoolData) => p.pair.toLowerCase().includes(searchName));
+      total = filtered.length;
+      pools = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    } else {
+      // Normal pagination — pass page + page_size directly to API
+      const response = await axios.get<any>(API_URL, { params: { page, page_size: PAGE_SIZE } });
+      if (!response.data?.data) throw new Error('Invalid API response');
+
+      pools = response.data.data.map(extractPoolData).filter((p: PoolData | null) => p) as PoolData[];
+      total = response.data.total || 0;
+
+      if (searchAddress) {
+        pools = pools.filter((p: PoolData) => p.address.toLowerCase().includes(searchAddress));
+      }
     }
 
-    res.json({
-      success: true,
-      data: pools,
-      count: pools.length,
-      page,
-      total: response.data.total || 0,
-    });
+    res.json({ success: true, data: pools, count: pools.length, page, total });
   } catch (error) {
     res.status(500).json({
       success: false,
