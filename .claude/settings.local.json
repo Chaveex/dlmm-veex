@@ -8,7 +8,11 @@
       "Bash(npm install *)",
       "Bash(npm test *)",
       "Bash(npm run *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(git commit -m 'feat\\(web\\): add express server and pool data viewer UI *)"
     ]
   }
 }
