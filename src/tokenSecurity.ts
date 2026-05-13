@@ -12,10 +12,12 @@ const DANGER_CONTRACT_AGE_DAYS = 7;
 const WARN_CONTRACT_AGE_DAYS = 30;
 
 export interface RugcheckReport {
-  mintAuthority?: string | null;
-  freezeAuthority?: string | null;
+  token?: {
+    mintAuthority?: string | null;
+    freezeAuthority?: string | null;
+  };
   topHolders?: Array<{ pct: number }>;
-  createdAt?: string | number;
+  detectedAt?: string;
   risks?: Array<{ level: string; description: string }>;
 }
 
@@ -28,7 +30,7 @@ export interface BirdeyeSecurity {
 
 export async function fetchRugcheck(mint: string): Promise<RugcheckReport> {
   const res = await axios.get<RugcheckReport>(
-    `${RUGCHECK_BASE}/tokens/${mint}/report/summary`,
+    `${RUGCHECK_BASE}/tokens/${mint}/report`,
     { timeout: TIMEOUT_MS }
   );
   return res.data;
@@ -72,7 +74,10 @@ export function scoreToken(
     if (level !== 'danger') level = 'warn';
   }
 
-  if (contractAgeDays <= DANGER_CONTRACT_AGE_DAYS) {
+  if (contractAgeDays < 0) {
+    flags.push('Contract age unknown — could not verify');
+    if (level !== 'danger') level = 'warn';
+  } else if (contractAgeDays <= DANGER_CONTRACT_AGE_DAYS) {
     flags.push(`Contract only ${contractAgeDays.toFixed(1)} days old — very recent`);
     level = 'danger';
   } else if (contractAgeDays <= WARN_CONTRACT_AGE_DAYS) {
@@ -100,16 +105,15 @@ export async function checkToken(mint: string, birdeyeApiKey?: string): Promise<
   let mintAuthorityActive = false;
   let freezeAuthorityActive = false;
   let topHoldersConcentration = 0;
-  let contractAgeDays = 9999;
+  let contractAgeDays = -1; // -1 = unknown
 
   if (rugcheckResult.status === 'fulfilled') {
     const r = rugcheckResult.value;
-    mintAuthorityActive = !!r.mintAuthority;
-    freezeAuthorityActive = !!r.freezeAuthority;
+    mintAuthorityActive = !!r.token?.mintAuthority;
+    freezeAuthorityActive = !!r.token?.freezeAuthority;
     topHoldersConcentration = r.topHolders?.reduce((sum, h) => sum + (h.pct || 0), 0) ?? 0;
-    if (r.createdAt) {
-      const ts = typeof r.createdAt === 'string' ? Date.parse(r.createdAt) : r.createdAt * 1000;
-      contractAgeDays = (Date.now() - ts) / (1000 * 60 * 60 * 24);
+    if (r.detectedAt) {
+      contractAgeDays = (Date.now() - Date.parse(r.detectedAt)) / (1000 * 60 * 60 * 24);
     }
   }
 
@@ -120,7 +124,7 @@ export async function checkToken(mint: string, birdeyeApiKey?: string): Promise<
     if (b.top10HolderPercent !== undefined) {
       topHoldersConcentration = Math.max(topHoldersConcentration, b.top10HolderPercent * 100);
     }
-    if (b.creationTx?.blockTime && contractAgeDays === 9999) {
+    if (b.creationTx?.blockTime && contractAgeDays < 0) {
       contractAgeDays = (Date.now() - b.creationTx.blockTime * 1000) / (1000 * 60 * 60 * 24);
     }
   }
