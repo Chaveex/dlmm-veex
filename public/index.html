@@ -484,6 +484,7 @@
   <script>
     let currentPage = 1;
     let totalPages = 1;
+    const poolsCache = {}; // address → pool object
 
     async function fetchData(page = 1) {
       currentPage = page;
@@ -521,6 +522,9 @@
           return;
         }
 
+        // Cache pools for AI analysis
+        pools.forEach(pool => { poolsCache[pool.address] = pool; });
+
         // Render table
         bodyEl.innerHTML = pools.map(pool => `
           <tr id="row-${escapeHtml(pool.address)}">
@@ -543,7 +547,7 @@
             </td>
             <td id="ai-${escapeHtml(pool.address)}">
               <button class="btn-check"
-                data-pool-json="${escapeHtml(JSON.stringify(pool))}"
+                data-address="${escapeHtml(pool.address)}"
                 onclick="analyzeWithAI(this)"
               >Analyze</button>
             </td>
@@ -614,8 +618,13 @@
     });
 
     async function analyzeWithAI(btn) {
-      const poolData = JSON.parse(btn.dataset.poolJson);
-      const cell = document.getElementById('ai-' + poolData.address);
+      const address = btn.dataset.address;
+      const poolData = poolsCache[address];
+      if (!poolData) {
+        btn.closest('td').innerHTML = '<span class="badge badge-danger">Pool not found</span>';
+        return;
+      }
+      const cell = document.getElementById('ai-' + address);
       if (!cell) return;
 
       cell.innerHTML = '<span class="badge badge-pending">Analyzing…</span>';
