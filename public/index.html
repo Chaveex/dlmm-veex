@@ -215,6 +215,44 @@
       border-bottom: 1px solid #e9ecef;
     }
 
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 0.8em;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: default;
+    }
+
+    .badge-safe    { background: #d4edda; color: #155724; }
+    .badge-warn    { background: #fff3cd; color: #856404; }
+    .badge-danger  { background: #f8d7da; color: #721c24; }
+    .badge-pending { background: #e9ecef; color: #6c757d; }
+
+    .btn-check {
+      background: none;
+      border: 1px solid #667eea;
+      color: #667eea;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.8em;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-weight: 600;
+    }
+
+    .btn-check:hover { background: #667eea; color: white; }
+    .btn-check:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .security-flags {
+      font-size: 0.78em;
+      color: #666;
+      margin-top: 4px;
+      max-width: 200px;
+    }
+
     tbody tr:hover {
       background: #f8f9fa;
     }
@@ -377,6 +415,10 @@
               Vol/TVL
               <span class="tooltip-icon" data-tooltip="Trading activity = 24h volume ÷ TVL">?</span>
             </th>
+            <th>
+              Security
+              <span class="tooltip-icon" data-tooltip="Token security: mint authority, freeze authority, holder concentration, contract age">?</span>
+            </th>
           </tr>
         </thead>
         <tbody id="poolsBody">
@@ -434,7 +476,7 @@
 
         // Render table
         bodyEl.innerHTML = pools.map(pool => `
-          <tr>
+          <tr id="row-${escapeHtml(pool.address)}">
             <td class="pair">${escapeHtml(pool.pair)}</td>
             <td class="address">${escapeHtml(pool.address)}</td>
             <td class="number">$${formatNumber(pool.tvl)}</td>
@@ -444,6 +486,11 @@
             <td class="number">${formatPoolAge(pool.poolAge)}</td>
             <td class="number">${(pool.feeTvlRatioPercent).toFixed(3)}%</td>
             <td class="number">${(pool.volumeTvlRatio).toFixed(2)}x</td>
+            <td id="sec-${escapeHtml(pool.address)}">
+              <button class="btn-check"
+                onclick="checkSecurity('${escapeHtml(pool.address)}','${escapeHtml(pool.tokenXMint)}','${escapeHtml(pool.tokenYMint)}')"
+              >Check</button>
+            </td>
           </tr>
         `).join('');
 
@@ -509,6 +556,31 @@
     document.getElementById('searchName').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') fetchData(1);
     });
+
+    async function checkSecurity(poolAddress, tokenXMint, tokenYMint) {
+      const cell = document.getElementById('sec-' + poolAddress);
+      if (!cell) return;
+
+      cell.innerHTML = '<span class="badge badge-pending">Checking…</span>';
+
+      try {
+        const params = new URLSearchParams({ pool: poolAddress, tokenX: tokenXMint, tokenY: tokenYMint });
+        const res = await fetch('/api/security?' + params);
+        const json = await res.json();
+
+        if (!json.success) throw new Error(json.error);
+
+        const { level, tokenX, tokenY } = json.data;
+        const allFlags = [...(tokenX.flags || []), ...(tokenY.flags || [])];
+
+        cell.innerHTML = `
+          <span class="badge badge-${level}">${level}</span>
+          ${allFlags.length ? `<div class="security-flags">${allFlags.map(f => `• ${escapeHtml(f)}`).join('<br>')}</div>` : ''}
+        `;
+      } catch (err) {
+        cell.innerHTML = `<span class="badge badge-danger">Error</span><div class="security-flags">${escapeHtml(err.message)}</div>`;
+      }
+    }
 
     // Global tooltip logic
     const globalTooltip = document.getElementById('global-tooltip');

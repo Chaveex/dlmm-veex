@@ -29,6 +29,9 @@ function extractPoolData(raw: RawPool): PoolData {
   const volumeTvlRatio = calculateVolumeTvlRatio(tvl, volume24h);
   const poolAgeHours = calculatePoolAgeHours(poolAge);
 
+  const tokenXMint = typeof raw.token_x?.address === 'string' ? raw.token_x.address : '';
+  const tokenYMint = typeof raw.token_y?.address === 'string' ? raw.token_y.address : '';
+
   return {
     address,
     pair,
@@ -40,6 +43,8 @@ function extractPoolData(raw: RawPool): PoolData {
     feeTvlRatioPercent,
     volumeTvlRatio,
     poolAgeHours,
+    tokenXMint,
+    tokenYMint,
   };
 }
 
