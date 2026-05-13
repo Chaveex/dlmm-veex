@@ -305,6 +305,8 @@
             <th class="number">24h Volume</th>
             <th class="number">Bin Step</th>
             <th class="number">Age (hrs)</th>
+            <th class="number">Fee/TVL %</th>
+            <th class="number">Vol/TVL</th>
           </tr>
         </thead>
         <tbody id="poolsBody">
@@ -370,6 +372,8 @@
             <td class="number">$${formatNumber(pool.volume24h)}</td>
             <td class="number">${pool.binStep}</td>
             <td class="number">${formatPoolAge(pool.poolAge)}</td>
+            <td class="number">${(pool.feeTvlRatioPercent).toFixed(3)}%</td>
+            <td class="number">${(pool.volumeTvlRatio).toFixed(2)}x</td>
           </tr>
         `).join('');
 

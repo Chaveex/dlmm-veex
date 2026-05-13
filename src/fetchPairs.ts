@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { PoolData, RawPool, ApiResponse } from './types';
+import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
 
 const API_URL = 'https://dlmm.datapi.meteora.ag/pools';
 
@@ -24,6 +25,10 @@ function extractPoolData(raw: RawPool): PoolData {
   const binStep = extractNumber(raw.pool_config?.bin_step, 'pool_config.bin_step');
   const poolAge = calculatePoolAge(raw.created_at);
 
+  const feeTvlRatioPercent = calculateFeeTvlRatio(tvl, fees24h);
+  const volumeTvlRatio = calculateVolumeTvlRatio(tvl, volume24h);
+  const poolAgeHours = calculatePoolAgeHours(poolAge);
+
   return {
     address,
     pair,
@@ -32,6 +37,9 @@ function extractPoolData(raw: RawPool): PoolData {
     volume24h,
     binStep,
     poolAge,
+    feeTvlRatioPercent,
+    volumeTvlRatio,
+    poolAgeHours,
   };
 }
 
