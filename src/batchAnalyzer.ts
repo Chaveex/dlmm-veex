@@ -179,7 +179,7 @@ export async function batchAnalyzePools(
   } = options;
 
   const anthropic = client ?? new Anthropic();
-  const start = Date.now();
+  const start = performance.now();
   const allResults: BatchPoolResult[] = [];
 
   const batches: PoolData[][] = [];
@@ -218,7 +218,7 @@ export async function batchAnalyzePools(
     succeeded,
     failed: allResults.length - succeeded,
     successRate: allResults.length > 0 ? succeeded / allResults.length : 0,
-    durationMs: Date.now() - start,
+    durationMs: performance.now() - start,
     results: allResults,
   };
 }
