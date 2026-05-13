@@ -393,7 +393,9 @@
           <input type="text" id="searchName" placeholder="Search by pair name...">
         </div>
         <button onclick="fetchData(1)">🔍 Search</button>
+        <button id="batchBtn" onclick="runBatchAnalysis()" style="display:none; background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);">🤖 Analyze All</button>
         <span class="loading" id="loading" style="display: none;">Loading...</span>
+        <span class="loading" id="batchLoading" style="display: none;">Analyzing…</span>
       </div>
 
       <div id="error" style="display: none;"></div>
@@ -565,6 +567,7 @@
         document.getElementById('totalFees').textContent = '$' + formatNumber(totalFees);
 
         statsEl.style.display = 'grid';
+        document.getElementById('batchBtn').style.display = 'inline';
 
         // Setup pagination
         if (result.total > 50) {
@@ -616,6 +619,74 @@
     document.getElementById('searchName').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') fetchData(1);
     });
+
+    async function runBatchAnalysis() {
+      const pools = Object.values(poolsCache);
+      if (pools.length === 0) return;
+
+      const batchBtn = document.getElementById('batchBtn');
+      const batchLoading = document.getElementById('batchLoading');
+      batchBtn.disabled = true;
+      batchLoading.style.display = 'inline';
+
+      // Show pending on all AI cells
+      pools.forEach((pool) => {
+        const cell = document.getElementById('ai-' + pool.address);
+        if (cell) cell.innerHTML = '<span class="badge badge-pending">Queued…</span>';
+      });
+
+      try {
+        const res = await fetch('/api/batch-analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pools }),
+        });
+
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error);
+
+        const { results, successRate, durationMs } = json.data;
+
+        results.forEach(({ pool, result, error }) => {
+          const cell = document.getElementById('ai-' + pool.address);
+          if (!cell) return;
+
+          if (error || !result) {
+            cell.innerHTML = `<span class="badge badge-danger">Error</span><div class="security-flags">${escapeHtml(error || 'No result')}</div>`;
+            return;
+          }
+
+          const scoreColor = result.score >= 7 ? 'high' : result.score >= 4 ? 'mid' : 'low';
+          const scorePct = (result.score / 10 * 100).toFixed(0);
+
+          cell.innerHTML = `
+            <div class="ai-result">
+              <div class="ai-score">
+                <strong>${result.score.toFixed(1)}</strong>
+                <div class="score-bar"><div class="score-fill ${scoreColor}" style="width:${scorePct}%"></div></div>
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+                <span class="badge badge-${result.recommandation}">${result.recommandation}</span>
+                <span class="badge badge-${result.conviction === 'high' ? 'safe' : result.conviction === 'mid' ? 'mid' : 'pending'}">${result.conviction}</span>
+              </div>
+              <div style="font-size:0.78em;color:#666;">
+                Bin: ${result.bin_step_optimal}bps &nbsp;|&nbsp;
+                Range: ${result.range_suggeree.min.toFixed(2)} – ${result.range_suggeree.max.toFixed(2)}
+              </div>
+              <div class="ai-raisonnement">${escapeHtml(result.raisonnement)}</div>
+            </div>
+          `;
+        });
+
+        batchBtn.textContent = `🤖 Analyze All (${(successRate * 100).toFixed(0)}% OK, ${(durationMs / 1000).toFixed(1)}s)`;
+      } catch (err) {
+        alert('Batch analysis failed: ' + err.message);
+      } finally {
+        batchBtn.disabled = false;
+        batchLoading.style.display = 'none';
+      }
+    }
 
     async function analyzeWithAI(btn) {
       const address = btn.dataset.address;

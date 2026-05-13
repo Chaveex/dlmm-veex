@@ -6,6 +6,7 @@ import { PoolData } from './types';
 import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
 import { checkPoolSecurity } from './tokenSecurity';
 import { analyzePool } from './poolAnalysis';
+import { batchAnalyzePools } from './batchAnalyzer';
 
 const app = express();
 app.use(express.json());
@@ -145,6 +146,30 @@ app.get('/api/security', async (req, res) => {
   try {
     const result = await checkPoolSecurity({ poolAddress, tokenXMint, tokenYMint });
     res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.post('/api/batch-analyze', async (req, res) => {
+  const pools: PoolData[] = req.body?.pools;
+
+  if (!Array.isArray(pools) || pools.length === 0) {
+    res.status(400).json({ success: false, error: 'pools array required' });
+    return;
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(503).json({ success: false, error: 'ANTHROPIC_API_KEY not configured' });
+    return;
+  }
+
+  try {
+    const summary = await batchAnalyzePools(pools, { batchSize: 10, concurrency: 3 });
+    res.json({ success: true, data: summary });
   } catch (error) {
     res.status(500).json({
       success: false,
