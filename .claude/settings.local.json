@@ -12,7 +12,13 @@
       "Bash(git commit -m ' *)",
       "Bash(git config *)",
       "Bash(grep -v \"^$\")",
-      "Bash(git commit -m 'feat\\(web\\): add express server and pool data viewer UI *)"
+      "Bash(git commit -m 'feat\\(web\\): add express server and pool data viewer UI *)",
+      "Bash(node dist/server.js)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/api/pairs)",
+      "Bash(curl -s -I https://dlmm-api.meteora.ag/pair/all)",
+      "Bash(curl -s \"https://dlmm.datapi.meteora.ag/pools?limit=2\")",
+      "Bash(git commit -m 'feat: update API to use dlmm.datapi.meteora.ag with correct endpoint *)"
     ]
   }
 }

@@ -1,26 +1,28 @@
 import axios from 'axios';
-import { PoolData, RawPoolResponse, ApiResponse } from './types';
+import { PoolData, RawPool, ApiResponse } from './types';
 
-const API_URL = 'https://dlmm-api.meteora.ag/pair/all';
+const API_URL = 'https://dlmm.datapi.meteora.ag/pools';
 
-export async function fetchPairs(): Promise<PoolData[]> {
-  const response = await axios.get<ApiResponse>(API_URL);
+export async function fetchPairs(limit: number = 100): Promise<PoolData[]> {
+  const response = await axios.get<ApiResponse>(API_URL, {
+    params: { limit },
+  });
 
-  if (!response.data || !Array.isArray(response.data.pairs)) {
-    throw new Error('Invalid API response: pairs array not found');
+  if (!response.data || !Array.isArray(response.data.data)) {
+    throw new Error('Invalid API response: data array not found');
   }
 
-  return response.data.pairs.map(extractPoolData);
+  return response.data.data.map(extractPoolData);
 }
 
-function extractPoolData(raw: RawPoolResponse): PoolData {
+function extractPoolData(raw: RawPool): PoolData {
   const address = extractString(raw.address, 'address');
-  const pair = extractString(raw.pair, 'pair');
+  const pair = extractString(raw.name, 'pair name');
   const tvl = extractNumber(raw.tvl, 'tvl');
-  const fees24h = extractNumber(raw.fees24h, 'fees24h');
-  const volume24h = extractNumber(raw.volume24h, 'volume24h');
-  const binStep = extractNumber(raw.binStep, 'binStep');
-  const poolAge = extractNumber(raw.poolAge, 'poolAge');
+  const fees24h = extractNumber(raw.fees?.['24h'], 'fees.24h');
+  const volume24h = extractNumber(raw.volume?.['24h'], 'volume.24h');
+  const binStep = extractNumber(raw.pool_config?.bin_step, 'pool_config.bin_step');
+  const poolAge = calculatePoolAge(raw.created_at);
 
   return {
     address,
@@ -31,6 +33,16 @@ function extractPoolData(raw: RawPoolResponse): PoolData {
     binStep,
     poolAge,
   };
+}
+
+function calculatePoolAge(createdAt: unknown): number {
+  const timestamp = Number(createdAt);
+  if (isNaN(timestamp)) {
+    throw new Error('Field created_at must be a valid timestamp');
+  }
+  const ageMs = Date.now() - timestamp;
+  const ageSeconds = Math.max(0, ageMs / 1000);
+  return ageSeconds;
 }
 
 function extractString(value: unknown, fieldName: string): string {

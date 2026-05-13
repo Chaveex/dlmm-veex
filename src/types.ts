@@ -8,16 +8,17 @@ export interface PoolData {
   poolAge: number;
 }
 
-export interface RawPoolResponse {
+export interface RawPool {
   address?: string;
-  pair?: string;
+  name?: string;
   tvl?: number | string;
-  fees24h?: number | string;
-  volume24h?: number | string;
-  binStep?: number | string;
-  poolAge?: number | string;
+  volume?: { '24h'?: number | string };
+  fees?: { '24h'?: number | string };
+  pool_config?: { bin_step?: number | string };
+  created_at?: number | string;
 }
 
 export interface ApiResponse {
-  pairs: RawPoolResponse[];
+  data?: RawPool[];
+  total?: number;
 }
