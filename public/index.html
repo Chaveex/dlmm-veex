@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DLMM Pool Data</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 2.5em;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 1.1em;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .search-group {
+      display: flex;
+      gap: 10px;
+      flex: 1;
+      min-width: 250px;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1em;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    input::placeholder {
+      color: #999;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      color: #667eea;
+      font-weight: 600;
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      border-left: 4px solid #c33;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    .stat-card {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2em;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
+
+    .table-wrapper {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: #f8f9fa;
+      border-bottom: 2px solid #e9ecef;
+    }
+
+    th {
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+      color: #495057;
+      font-size: 0.95em;
+    }
+
+    td {
+      padding: 15px;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    tbody tr:hover {
+      background: #f8f9fa;
+    }
+
+    .address {
+      font-family: 'Courier New', monospace;
+      font-size: 0.85em;
+      color: #667eea;
+      word-break: break-all;
+      max-width: 200px;
+    }
+
+    .pair {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .number {
+      font-family: 'Courier New', monospace;
+      color: #666;
+      text-align: right;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 40px;
+      color: #999;
+      font-size: 1.1em;
+    }
+
+    .pagination {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+    }
+
+    .pagination button {
+      padding: 8px 16px;
+      font-size: 0.9em;
+    }
+
+    .pagination span {
+      color: #666;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      .table-wrapper {
+        overflow-x: auto;
+      }
+
+      table {
+        min-width: 600px;
+      }
+
+      h1 {
+        font-size: 1.8em;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .search-group {
+        flex-direction: column;
+        min-width: auto;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .pagination {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🌊 DLMM Pool Data Viewer</h1>
+      <p class="subtitle">Real-time pool data from Meteora DLMM API</p>
+
+      <div class="controls">
+        <div class="search-group">
+          <input type="text" id="searchAddress" placeholder="Search by address...">
+          <input type="text" id="searchName" placeholder="Search by pair name...">
+        </div>
+        <button onclick="fetchData(1)">🔍 Search</button>
+        <span class="loading" id="loading" style="display: none;">Loading...</span>
+      </div>
+
+      <div id="error" style="display: none;"></div>
+
+      <div class="stats" id="stats" style="display: none;">
+        <div class="stat-card">
+          <div class="stat-value" id="poolCount">0</div>
+          <div class="stat-label">Pools</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalTVL">$0</div>
+          <div class="stat-label">Total TVL</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalVolume">$0</div>
+          <div class="stat-label">24h Volume</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="totalFees">$0</div>
+          <div class="stat-label">24h Fees</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="table-wrapper">
+      <table id="poolsTable">
+        <thead>
+          <tr>
+            <th>Pair</th>
+            <th>Address</th>
+            <th class="number">TVL</th>
+            <th class="number">24h Fees</th>
+            <th class="number">24h Volume</th>
+            <th class="number">Bin Step</th>
+            <th class="number">Age (hrs)</th>
+          </tr>
+        </thead>
+        <tbody id="poolsBody">
+          <tr><td colspan="7" class="empty">Enter search terms and click "Search" to fetch data.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination" id="pagination" style="display: none;">
+      <button onclick="previousPage()" id="prevBtn">← Prev</button>
+      <span id="pageInfo"></span>
+      <button onclick="nextPage()" id="nextBtn">Next →</button>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let totalPages = 1;
+
+    async function fetchData(page = 1) {
+      currentPage = page;
+      const loadingEl = document.getElementById('loading');
+      const errorEl = document.getElementById('error');
+      const statsEl = document.getElementById('stats');
+      const bodyEl = document.getElementById('poolsBody');
+      const paginationEl = document.getElementById('pagination');
+
+      const searchAddress = document.getElementById('searchAddress').value;
+      const searchName = document.getElementById('searchName').value;
+
+      loadingEl.style.display = 'inline';
+      errorEl.style.display = 'none';
+      statsEl.style.display = 'none';
+      paginationEl.style.display = 'none';
+
+      try {
+        const params = new URLSearchParams();
+        params.append('page', page.toString());
+        if (searchAddress) params.append('address', searchAddress);
+        if (searchName) params.append('name', searchName);
+
+        const response = await fetch(`/api/pairs?${params}`);
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+
+        const pools = result.data;
+
+        if (pools.length === 0) {
+          bodyEl.innerHTML = '<tr><td colspan="7" class="empty">No pools found matching criteria.</td></tr>';
+          return;
+        }
+
+        // Render table
+        bodyEl.innerHTML = pools.map(pool => `
+          <tr>
+            <td class="pair">${escapeHtml(pool.pair)}</td>
+            <td class="address">${escapeHtml(pool.address)}</td>
+            <td class="number">$${formatNumber(pool.tvl)}</td>
+            <td class="number">$${formatNumber(pool.fees24h)}</td>
+            <td class="number">$${formatNumber(pool.volume24h)}</td>
+            <td class="number">${pool.binStep}</td>
+            <td class="number">${formatPoolAge(pool.poolAge)}</td>
+          </tr>
+        `).join('');
+
+        // Calculate and display stats
+        const totalTVL = pools.reduce((sum, p) => sum + p.tvl, 0);
+        const totalVolume = pools.reduce((sum, p) => sum + p.volume24h, 0);
+        const totalFees = pools.reduce((sum, p) => sum + p.fees24h, 0);
+
+        document.getElementById('poolCount').textContent = pools.length;
+        document.getElementById('totalTVL').textContent = '$' + formatNumber(totalTVL);
+        document.getElementById('totalVolume').textContent = '$' + formatNumber(totalVolume);
+        document.getElementById('totalFees').textContent = '$' + formatNumber(totalFees);
+
+        statsEl.style.display = 'grid';
+
+        // Setup pagination
+        if (result.total > 50) {
+          totalPages = Math.ceil(result.total / 50);
+          document.getElementById('pageInfo').textContent = `Page ${page} of ${totalPages}`;
+          document.getElementById('prevBtn').disabled = page === 1;
+          document.getElementById('nextBtn').disabled = page === totalPages;
+          paginationEl.style.display = 'flex';
+        }
+
+      } catch (error) {
+        errorEl.textContent = '❌ Error: ' + error.message;
+        errorEl.style.display = 'block';
+        bodyEl.innerHTML = '<tr><td colspan="7" class="empty">Failed to load pools.</td></tr>';
+      } finally {
+        loadingEl.style.display = 'none';
+      }
+    }
+
+    function previousPage() {
+      if (currentPage > 1) fetchData(currentPage - 1);
+    }
+
+    function nextPage() {
+      if (currentPage < totalPages) fetchData(currentPage + 1);
+    }
+
+    function formatNumber(num) {
+      if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+      if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+      if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
+      return num.toFixed(2);
+    }
+
+    function formatPoolAge(seconds) {
+      return (seconds / 3600).toFixed(1);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Search on Enter key
+    document.getElementById('searchAddress').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') fetchData(1);
+    });
+    document.getElementById('searchName').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') fetchData(1);
+    });
+  </script>
+</body>
+</html>
