@@ -168,6 +168,7 @@
       font-size: 0.95em;
       position: relative;
       cursor: help;
+      z-index: 1;
     }
 
     .tooltip-icon {
@@ -183,14 +184,12 @@
       line-height: 16px;
       font-size: 0.8em;
       font-weight: bold;
-      z-index: 10;
     }
 
     .tooltip-icon:hover::after {
       content: attr(data-tooltip);
-      position: fixed;
-      bottom: auto;
-      top: 80px;
+      position: absolute;
+      bottom: 120%;
       left: 50%;
       transform: translateX(-50%);
       background: #333;
@@ -200,21 +199,20 @@
       font-size: 0.85em;
       font-weight: normal;
       white-space: nowrap;
-      z-index: 9999;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
       pointer-events: none;
     }
 
     .tooltip-icon:hover::before {
       content: '';
-      position: fixed;
-      bottom: auto;
-      top: 70px;
+      position: absolute;
+      bottom: 108%;
       left: 50%;
       transform: translateX(-50%);
       border: 6px solid transparent;
       border-top-color: #333;
-      z-index: 9999;
+      z-index: 10000;
       pointer-events: none;
     }
 
