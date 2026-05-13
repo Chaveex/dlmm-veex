@@ -20,19 +20,20 @@ const RECENT_DATE_MS = Date.now() - 3 * 24 * 60 * 60 * 1000; // 3 days ago
 
 const rugcheckSafeResponse = {
   data: {
-    mintAuthority: null,
-    freezeAuthority: null,
+    token: { mintAuthority: null, freezeAuthority: null },
     topHolders: [{ pct: 5 }, { pct: 3 }, { pct: 2 }],
-    createdAt: Math.floor(OLD_DATE_MS / 1000),
+    detectedAt: new Date(OLD_DATE_MS).toISOString(),
   },
 };
 
 const rugcheckDangerResponse = {
   data: {
-    mintAuthority: 'SomeAuthority111111111111111111111111111111',
-    freezeAuthority: 'SomeFreeze111111111111111111111111111111111',
+    token: {
+      mintAuthority: 'SomeAuthority111111111111111111111111111111',
+      freezeAuthority: 'SomeFreeze111111111111111111111111111111111',
+    },
     topHolders: [{ pct: 40 }, { pct: 20 }, { pct: 5 }],
-    createdAt: Math.floor(RECENT_DATE_MS / 1000),
+    detectedAt: new Date(RECENT_DATE_MS).toISOString(),
   },
 };
 
@@ -104,6 +105,12 @@ describe('scoreToken', () => {
     expect(r.level).toBe('danger');
   });
 
+  it('returns warn when contract age unknown (-1)', () => {
+    const r = scoreToken(WARN_MINT, false, false, 10, -1);
+    expect(r.level).toBe('warn');
+    expect(r.flags.some(f => f.includes('unknown'))).toBe(true);
+  });
+
   it('returns correct fields', () => {
     const r = scoreToken(SAFE_MINT, false, false, 10, 365);
     expect(r.mint).toBe(SAFE_MINT);
@@ -120,7 +127,7 @@ describe('fetchRugcheck', () => {
   it('fetches rugcheck report', async () => {
     mockAxios.get.mockResolvedValueOnce(rugcheckSafeResponse);
     const r = await fetchRugcheck(SAFE_MINT);
-    expect(r.mintAuthority).toBeNull();
+    expect(r.token?.mintAuthority).toBeNull();
     expect(mockAxios.get).toHaveBeenCalledWith(
       expect.stringContaining(SAFE_MINT),
       expect.objectContaining({ timeout: expect.any(Number) })
@@ -134,7 +141,7 @@ describe('fetchBirdeye', () => {
   it('fetches birdeye security data', async () => {
     mockAxios.get.mockResolvedValueOnce(birdeyeSafeResponse);
     const r = await fetchBirdeye(SAFE_MINT);
-    expect(r.mintAuthority).toBeNull();
+    expect(r.mintAuthority).toBeNull(); // birdeye structure unchanged
   });
 
   it('includes API key in headers when provided', async () => {
