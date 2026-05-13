@@ -488,7 +488,10 @@
             <td class="number">${(pool.volumeTvlRatio).toFixed(2)}x</td>
             <td id="sec-${escapeHtml(pool.address)}">
               <button class="btn-check"
-                onclick="checkSecurity('${escapeHtml(pool.address)}','${escapeHtml(pool.tokenXMint)}','${escapeHtml(pool.tokenYMint)}')"
+                data-pool="${escapeHtml(pool.address)}"
+                data-token-x="${escapeHtml(pool.tokenXMint)}"
+                data-token-y="${escapeHtml(pool.tokenYMint)}"
+                onclick="checkSecurity(this)"
               >Check</button>
             </td>
           </tr>
@@ -557,15 +560,22 @@
       if (e.key === 'Enter') fetchData(1);
     });
 
-    async function checkSecurity(poolAddress, tokenXMint, tokenYMint) {
+    async function checkSecurity(btn) {
+      const poolAddress = btn.dataset.pool;
+      const tokenXMint  = btn.dataset.tokenX;
+      const tokenYMint  = btn.dataset.tokenY;
+
       const cell = document.getElementById('sec-' + poolAddress);
       if (!cell) return;
 
       cell.innerHTML = '<span class="badge badge-pending">Checking…</span>';
 
       try {
+        if (!tokenXMint || !tokenYMint) throw new Error('Token mints missing for this pool');
+
         const params = new URLSearchParams({ pool: poolAddress, tokenX: tokenXMint, tokenY: tokenYMint });
         const res = await fetch('/api/security?' + params);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
         const json = await res.json();
 
         if (!json.success) throw new Error(json.error);
