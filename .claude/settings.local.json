@@ -26,7 +26,14 @@
       "Bash(git commit -m 'docs: add project guidelines and branch naming convention *)",
       "Bash(git pull *)",
       "Bash(git commit -m 'feat\\(SCRUM-53\\): implement pure pool metrics calculations *)",
-      "Bash(git commit -m 'feat: integrate pool metrics into API and UI *)"
+      "Bash(git commit -m 'feat: integrate pool metrics into API and UI *)",
+      "Bash(git commit -m 'feat: add tooltips to column headers for data explanation *)",
+      "Bash(git commit -m 'fix: tooltip z-index issue - use fixed positioning with z-index 9999 *)",
+      "Bash(git commit -m 'fix: tooltip positioning - use absolute with proper offsets *)",
+      "Bash(git commit -m 'fix: tooltip clipping - change table-wrapper overflow *)",
+      "Bash(git commit -m 'fix: tooltip-icon visibility - add z-index to thead + overflow visible on th *)",
+      "Bash(git commit -m 'fix: refactor tooltips to use global div + JS positioning *)",
+      "Bash(git commit -m 'feat\\(SCRUM-54\\): implement token security check with safe/warn/danger rating *)"
     ]
   }
 }

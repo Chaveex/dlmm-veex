@@ -25,3 +25,23 @@ export interface ApiResponse {
   data?: RawPool[];
   total?: number;
 }
+
+export type SecurityLevel = 'safe' | 'warn' | 'danger';
+
+export interface TokenSecurityResult {
+  mint: string;
+  level: SecurityLevel;
+  flags: string[];
+  mintAuthorityActive: boolean;
+  freezeAuthorityActive: boolean;
+  topHoldersConcentration: number;
+  contractAgedays: number;
+}
+
+export interface PoolSecurityResult {
+  poolAddress: string;
+  level: SecurityLevel;
+  tokenX: TokenSecurityResult;
+  tokenY: TokenSecurityResult;
+  error?: string;
+}
