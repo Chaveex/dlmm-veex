@@ -166,6 +166,51 @@
       font-weight: 600;
       color: #495057;
       font-size: 0.95em;
+      position: relative;
+      cursor: help;
+    }
+
+    .tooltip-icon {
+      position: relative;
+      display: inline-block;
+      margin-left: 4px;
+      width: 16px;
+      height: 16px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 16px;
+      font-size: 0.8em;
+      font-weight: bold;
+    }
+
+    .tooltip-icon:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      font-weight: normal;
+      white-space: nowrap;
+      z-index: 1000;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .tooltip-icon:hover::before {
+      content: '';
+      position: absolute;
+      bottom: 115%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: #333;
+      z-index: 1000;
     }
 
     td {
@@ -298,15 +343,42 @@
       <table id="poolsTable">
         <thead>
           <tr>
-            <th>Pair</th>
-            <th>Address</th>
-            <th class="number">TVL</th>
-            <th class="number">24h Fees</th>
-            <th class="number">24h Volume</th>
-            <th class="number">Bin Step</th>
-            <th class="number">Age (hrs)</th>
-            <th class="number">Fee/TVL %</th>
-            <th class="number">Vol/TVL</th>
+            <th>
+              Pair
+              <span class="tooltip-icon" data-tooltip="Token pair trading in this pool">?</span>
+            </th>
+            <th>
+              Address
+              <span class="tooltip-icon" data-tooltip="Pool smart contract address">?</span>
+            </th>
+            <th class="number">
+              TVL
+              <span class="tooltip-icon" data-tooltip="Total Value Locked in pool">?</span>
+            </th>
+            <th class="number">
+              24h Fees
+              <span class="tooltip-icon" data-tooltip="Fees collected by LPs last 24h">?</span>
+            </th>
+            <th class="number">
+              24h Volume
+              <span class="tooltip-icon" data-tooltip="Trading volume last 24 hours">?</span>
+            </th>
+            <th class="number">
+              Bin Step
+              <span class="tooltip-icon" data-tooltip="Price tick size in basis points">?</span>
+            </th>
+            <th class="number">
+              Age (hrs)
+              <span class="tooltip-icon" data-tooltip="Pool creation time in hours">?</span>
+            </th>
+            <th class="number">
+              Fee/TVL %
+              <span class="tooltip-icon" data-tooltip="Fee yield = 24h fees ÷ TVL × 100">?</span>
+            </th>
+            <th class="number">
+              Vol/TVL
+              <span class="tooltip-icon" data-tooltip="Trading activity = 24h volume ÷ TVL">?</span>
+            </th>
           </tr>
         </thead>
         <tbody id="poolsBody">
