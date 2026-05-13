@@ -616,6 +616,7 @@
       <table id="poolsTable">
         <thead>
           <tr>
+            <th style="width:36px;" title="Open in profitability calculator">📊</th>
             <th>
               Pair
               <span class="tooltip-icon" data-tooltip="Token pair trading in this pool">?</span>
@@ -824,10 +825,10 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         // Render table
         bodyEl.innerHTML = pools.map(pool => `
           <tr id="row-${escapeHtml(pool.address)}">
-            <td class="pair">
-              ${escapeHtml(pool.pair)}
-              <br><button class="btn-calc" data-address="${escapeHtml(pool.address)}" onclick="fillCalculatorFromBtn(this)" title="Open in calculator">📊</button>
+            <td style="text-align:center;">
+              <button class="btn-calc" data-address="${escapeHtml(pool.address)}" onclick="fillCalculatorFromBtn(this)" title="Analyze in calculator">📊</button>
             </td>
+            <td class="pair">${escapeHtml(pool.pair)}</td>
             <td class="address">${escapeHtml(pool.address)}</td>
             <td class="number">$${formatNumber(pool.tvl)}</td>
             <td class="number">$${formatNumber(pool.fees24h)}</td>
