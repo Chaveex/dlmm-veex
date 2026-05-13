@@ -3,6 +3,7 @@ import path from 'path';
 import axios from 'axios';
 import { PoolData } from './types';
 import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
+import { checkPoolSecurity } from './tokenSecurity';
 
 const app = express();
 const PORT = 3000;
@@ -79,6 +80,9 @@ function extractPoolData(raw: any): PoolData | null {
     const volumeTvlRatio = calculateVolumeTvlRatio(tvl, volume24h);
     const poolAgeHours = calculatePoolAgeHours(poolAge);
 
+    const tokenXMint = typeof raw.token_x?.address === 'string' ? raw.token_x.address : '';
+    const tokenYMint = typeof raw.token_y?.address === 'string' ? raw.token_y.address : '';
+
     return {
       address,
       pair,
@@ -90,6 +94,8 @@ function extractPoolData(raw: any): PoolData | null {
       feeTvlRatioPercent,
       volumeTvlRatio,
       poolAgeHours,
+      tokenXMint,
+      tokenYMint,
     };
   } catch {
     return null;
@@ -122,6 +128,27 @@ function calculatePoolAge(createdAt: unknown): number {
   if (isNaN(timestamp)) throw new Error('timestamp invalid');
   return Math.max(0, (Date.now() - timestamp) / 1000);
 }
+
+app.get('/api/security', async (req, res) => {
+  const poolAddress = req.query.pool as string;
+  const tokenXMint = req.query.tokenX as string;
+  const tokenYMint = req.query.tokenY as string;
+
+  if (!poolAddress || !tokenXMint || !tokenYMint) {
+    res.status(400).json({ success: false, error: 'pool, tokenX, tokenY required' });
+    return;
+  }
+
+  try {
+    const result = await checkPoolSecurity({ poolAddress, tokenXMint, tokenYMint });
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
