@@ -145,7 +145,8 @@
     .table-wrapper {
       background: white;
       border-radius: 12px;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: visible;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       margin-top: 20px;
     }
@@ -166,6 +167,47 @@
       font-weight: 600;
       color: #495057;
       font-size: 0.95em;
+    }
+
+    .tooltip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 4px;
+      width: 16px;
+      height: 16px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      font-size: 0.8em;
+      font-weight: bold;
+      cursor: help;
+      vertical-align: middle;
+    }
+
+    #global-tooltip {
+      display: none;
+      position: fixed;
+      background: #333;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85em;
+      white-space: nowrap;
+      z-index: 99999;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+      transform: translateX(-50%);
+    }
+
+    #global-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: #333;
     }
 
     td {
@@ -258,6 +300,7 @@
   </style>
 </head>
 <body>
+  <div id="global-tooltip"></div>
   <div class="container">
     <header>
       <h1>🌊 DLMM Pool Data Viewer</h1>
@@ -298,13 +341,42 @@
       <table id="poolsTable">
         <thead>
           <tr>
-            <th>Pair</th>
-            <th>Address</th>
-            <th class="number">TVL</th>
-            <th class="number">24h Fees</th>
-            <th class="number">24h Volume</th>
-            <th class="number">Bin Step</th>
-            <th class="number">Age (hrs)</th>
+            <th>
+              Pair
+              <span class="tooltip-icon" data-tooltip="Token pair trading in this pool">?</span>
+            </th>
+            <th>
+              Address
+              <span class="tooltip-icon" data-tooltip="Pool smart contract address">?</span>
+            </th>
+            <th class="number">
+              TVL
+              <span class="tooltip-icon" data-tooltip="Total Value Locked in pool">?</span>
+            </th>
+            <th class="number">
+              24h Fees
+              <span class="tooltip-icon" data-tooltip="Fees collected by LPs last 24h">?</span>
+            </th>
+            <th class="number">
+              24h Volume
+              <span class="tooltip-icon" data-tooltip="Trading volume last 24 hours">?</span>
+            </th>
+            <th class="number">
+              Bin Step
+              <span class="tooltip-icon" data-tooltip="Price tick size in basis points">?</span>
+            </th>
+            <th class="number">
+              Age (hrs)
+              <span class="tooltip-icon" data-tooltip="Pool creation time in hours">?</span>
+            </th>
+            <th class="number">
+              Fee/TVL %
+              <span class="tooltip-icon" data-tooltip="Fee yield = 24h fees ÷ TVL × 100">?</span>
+            </th>
+            <th class="number">
+              Vol/TVL
+              <span class="tooltip-icon" data-tooltip="Trading activity = 24h volume ÷ TVL">?</span>
+            </th>
           </tr>
         </thead>
         <tbody id="poolsBody">
@@ -370,6 +442,8 @@
             <td class="number">$${formatNumber(pool.volume24h)}</td>
             <td class="number">${pool.binStep}</td>
             <td class="number">${formatPoolAge(pool.poolAge)}</td>
+            <td class="number">${(pool.feeTvlRatioPercent).toFixed(3)}%</td>
+            <td class="number">${(pool.volumeTvlRatio).toFixed(2)}x</td>
           </tr>
         `).join('');
 
@@ -434,6 +508,33 @@
     });
     document.getElementById('searchName').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') fetchData(1);
+    });
+
+    // Global tooltip logic
+    const globalTooltip = document.getElementById('global-tooltip');
+
+    document.addEventListener('mouseover', (e) => {
+      const icon = e.target.closest('.tooltip-icon');
+      if (!icon) return;
+      const text = icon.getAttribute('data-tooltip');
+      if (!text) return;
+
+      globalTooltip.textContent = text;
+      globalTooltip.style.display = 'block';
+
+      const rect = icon.getBoundingClientRect();
+      const tipWidth = globalTooltip.offsetWidth;
+      const left = rect.left + rect.width / 2;
+      const top = rect.top - globalTooltip.offsetHeight - 10 + window.scrollY;
+
+      globalTooltip.style.left = left + 'px';
+      globalTooltip.style.top = top + 'px';
+    });
+
+    document.addEventListener('mouseout', (e) => {
+      if (e.target.closest('.tooltip-icon')) {
+        globalTooltip.style.display = 'none';
+      }
     });
   </script>
 </body>

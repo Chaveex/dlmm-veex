@@ -6,6 +6,9 @@ export interface PoolData {
   volume24h: number;
   binStep: number;
   poolAge: number;
+  feeTvlRatioPercent: number;
+  volumeTvlRatio: number;
+  poolAgeHours: number;
 }
 
 export interface RawPool {

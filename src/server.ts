@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import axios from 'axios';
 import { PoolData } from './types';
+import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
 
 const app = express();
 const PORT = 3000;
@@ -63,7 +64,22 @@ function extractPoolData(raw: any): PoolData | null {
     const binStep = extractNumber(raw.pool_config?.bin_step, 'bin_step');
     const poolAge = calculatePoolAge(raw.created_at);
 
-    return { address, pair, tvl, fees24h, volume24h, binStep, poolAge };
+    const feeTvlRatioPercent = calculateFeeTvlRatio(tvl, fees24h);
+    const volumeTvlRatio = calculateVolumeTvlRatio(tvl, volume24h);
+    const poolAgeHours = calculatePoolAgeHours(poolAge);
+
+    return {
+      address,
+      pair,
+      tvl,
+      fees24h,
+      volume24h,
+      binStep,
+      poolAge,
+      feeTvlRatioPercent,
+      volumeTvlRatio,
+      poolAgeHours,
+    };
   } catch {
     return null;
   }
