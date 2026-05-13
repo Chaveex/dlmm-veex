@@ -68,7 +68,8 @@
       "Bash(git commit -m 'feat\\(SCRUM-57\\): Claude API pool analyzer with structured JSON output *)",
       "Bash(git commit -m 'feat: integrate Claude pool analysis into app *)",
       "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\)['data'][0]; print\\(json.dumps\\(p\\)\\)\")",
-      "Bash(git commit -m 'fix: Analyze button broken — data-pool-json attribute corruption *)"
+      "Bash(git commit -m 'fix: Analyze button broken — data-pool-json attribute corruption *)",
+      "Bash(git commit -m 'feat: add .env support via dotenv *)"
     ]
   }
 }
