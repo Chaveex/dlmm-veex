@@ -18,7 +18,10 @@
       "Bash(curl -s http://localhost:3000/api/pairs)",
       "Bash(curl -s -I https://dlmm-api.meteora.ag/pair/all)",
       "Bash(curl -s \"https://dlmm.datapi.meteora.ag/pools?limit=2\")",
-      "Bash(git commit -m 'feat: update API to use dlmm.datapi.meteora.ag with correct endpoint *)"
+      "Bash(git commit -m 'feat: update API to use dlmm.datapi.meteora.ag with correct endpoint *)",
+      "Bash(curl -s \"http://localhost:3000/api/pairs?page=1&address=5rCf\")",
+      "Bash(curl -s \"http://localhost:3000/api/pairs?page=1&name=SOL\")",
+      "Bash(git commit -m 'feat: add pagination and search filters for pools *)"
     ]
   }
 }

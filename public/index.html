@@ -45,20 +45,47 @@
     .controls {
       margin-top: 20px;
       display: flex;
+      gap: 15px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .search-group {
+      display: flex;
       gap: 10px;
-      align-items: center;
+      flex: 1;
+      min-width: 250px;
+    }
+
+    input {
+      flex: 1;
+      padding: 10px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 1em;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    input::placeholder {
+      color: #999;
     }
 
     button {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border: none;
-      padding: 12px 24px;
+      padding: 10px 24px;
       border-radius: 8px;
       cursor: pointer;
       font-size: 1em;
       font-weight: 600;
       transition: transform 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
     }
 
     button:hover {
@@ -68,6 +95,11 @@
 
     button:active {
       transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .loading {
@@ -171,6 +203,27 @@
       font-size: 1.1em;
     }
 
+    .pagination {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      margin-top: 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+    }
+
+    .pagination button {
+      padding: 8px 16px;
+      font-size: 0.9em;
+    }
+
+    .pagination span {
+      color: #666;
+      font-weight: 600;
+    }
+
     @media (max-width: 768px) {
       .table-wrapper {
         overflow-x: auto;
@@ -189,8 +242,17 @@
         align-items: stretch;
       }
 
+      .search-group {
+        flex-direction: column;
+        min-width: auto;
+      }
+
       button {
         width: 100%;
+      }
+
+      .pagination {
+        flex-direction: column;
       }
     }
   </style>
@@ -202,7 +264,11 @@
       <p class="subtitle">Real-time pool data from Meteora DLMM API</p>
 
       <div class="controls">
-        <button onclick="fetchData()">📊 Load Pools</button>
+        <div class="search-group">
+          <input type="text" id="searchAddress" placeholder="Search by address...">
+          <input type="text" id="searchName" placeholder="Search by pair name...">
+        </div>
+        <button onclick="fetchData(1)">🔍 Search</button>
         <span class="loading" id="loading" style="display: none;">Loading...</span>
       </div>
 
@@ -242,25 +308,45 @@
           </tr>
         </thead>
         <tbody id="poolsBody">
-          <tr><td colspan="7" class="empty">No data loaded. Click "Load Pools" to fetch data.</td></tr>
+          <tr><td colspan="7" class="empty">Enter search terms and click "Search" to fetch data.</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="pagination" id="pagination" style="display: none;">
+      <button onclick="previousPage()" id="prevBtn">← Prev</button>
+      <span id="pageInfo"></span>
+      <button onclick="nextPage()" id="nextBtn">Next →</button>
     </div>
   </div>
 
   <script>
-    async function fetchData() {
+    let currentPage = 1;
+    let totalPages = 1;
+
+    async function fetchData(page = 1) {
+      currentPage = page;
       const loadingEl = document.getElementById('loading');
       const errorEl = document.getElementById('error');
       const statsEl = document.getElementById('stats');
       const bodyEl = document.getElementById('poolsBody');
+      const paginationEl = document.getElementById('pagination');
+
+      const searchAddress = document.getElementById('searchAddress').value;
+      const searchName = document.getElementById('searchName').value;
 
       loadingEl.style.display = 'inline';
       errorEl.style.display = 'none';
       statsEl.style.display = 'none';
+      paginationEl.style.display = 'none';
 
       try {
-        const response = await fetch('/api/pairs');
+        const params = new URLSearchParams();
+        params.append('page', page.toString());
+        if (searchAddress) params.append('address', searchAddress);
+        if (searchName) params.append('name', searchName);
+
+        const response = await fetch(`/api/pairs?${params}`);
         const result = await response.json();
 
         if (!result.success) {
@@ -270,7 +356,7 @@
         const pools = result.data;
 
         if (pools.length === 0) {
-          bodyEl.innerHTML = '<tr><td colspan="7" class="empty">No pools found.</td></tr>';
+          bodyEl.innerHTML = '<tr><td colspan="7" class="empty">No pools found matching criteria.</td></tr>';
           return;
         }
 
@@ -299,6 +385,15 @@
 
         statsEl.style.display = 'grid';
 
+        // Setup pagination
+        if (result.total > 50) {
+          totalPages = Math.ceil(result.total / 50);
+          document.getElementById('pageInfo').textContent = `Page ${page} of ${totalPages}`;
+          document.getElementById('prevBtn').disabled = page === 1;
+          document.getElementById('nextBtn').disabled = page === totalPages;
+          paginationEl.style.display = 'flex';
+        }
+
       } catch (error) {
         errorEl.textContent = '❌ Error: ' + error.message;
         errorEl.style.display = 'block';
@@ -306,6 +401,14 @@
       } finally {
         loadingEl.style.display = 'none';
       }
+    }
+
+    function previousPage() {
+      if (currentPage > 1) fetchData(currentPage - 1);
+    }
+
+    function nextPage() {
+      if (currentPage < totalPages) fetchData(currentPage + 1);
     }
 
     function formatNumber(num) {
@@ -324,6 +427,14 @@
       div.textContent = text;
       return div.innerHTML;
     }
+
+    // Search on Enter key
+    document.getElementById('searchAddress').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') fetchData(1);
+    });
+    document.getElementById('searchName').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') fetchData(1);
+    });
   </script>
 </body>
 </html>
