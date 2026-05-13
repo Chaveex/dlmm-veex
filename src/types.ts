@@ -9,6 +9,8 @@ export interface PoolData {
   feeTvlRatioPercent: number;
   volumeTvlRatio: number;
   poolAgeHours: number;
+  tokenXMint: string;
+  tokenYMint: string;
 }
 
 export interface RawPool {
@@ -19,6 +21,8 @@ export interface RawPool {
   fees?: { '24h'?: number | string };
   pool_config?: { bin_step?: number | string };
   created_at?: number | string;
+  token_x?: { address?: string };
+  token_y?: { address?: string };
 }
 
 export interface ApiResponse {
