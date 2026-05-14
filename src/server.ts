@@ -18,12 +18,62 @@ const PORT = 3000;
 app.use(express.static(path.join(__dirname, '../public')));
 
 const API_URL = 'https://dlmm.datapi.meteora.ag/pools';
-const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
+const DEVNET_MODE = process.env.DEVNET_MODE === 'true';
+const RPC_URL = DEVNET_MODE
+  ? (process.env.DEVNET_RPC_URL || 'https://api.devnet.solana.com')
+  : (process.env.RPC_URL || 'https://api.mainnet-beta.solana.com');
 const connection = new Connection(RPC_URL, 'confirmed');
 const DLMM_PROGRAM_ID = '11111111111111111111111111111111';
 
 const PAGE_SIZE = 50;
 const SEARCH_PAGES = 10; // fetch 10 pages = 500 pools for name search
+
+app.get('/api/network', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      devnet: DEVNET_MODE,
+      rpcUrl: RPC_URL,
+      network: DEVNET_MODE ? 'devnet' : 'mainnet',
+    },
+  });
+});
+
+app.post('/api/airdrop', async (req, res) => {
+  if (!DEVNET_MODE) {
+    res.status(400).json({ success: false, error: 'Airdrop only available on devnet' });
+    return;
+  }
+
+  const { wallet } = req.body;
+  if (!wallet) {
+    res.status(400).json({ success: false, error: 'wallet required' });
+    return;
+  }
+
+  try {
+    const pubkey = new PublicKey(wallet);
+    const lamports = 2 * 1e9; // 2 SOL
+
+    const signature = await connection.requestAirdrop(pubkey, lamports);
+    await connection.confirmTransaction(signature);
+
+    res.json({
+      success: true,
+      data: {
+        signature,
+        amount: 2,
+        message: 'Airdropped 2 SOL to wallet',
+      },
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({
+      success: false,
+      error: `Airdrop failed: ${msg}`,
+    });
+  }
+});
 
 app.get('/api/pairs', async (req, res) => {
   try {
