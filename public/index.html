@@ -1290,9 +1290,19 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
           throw new Error('Phantom provider not available');
         }
 
-        const txBuf = Buffer.from(txBase64, 'base64');
+        // Decode base64 to binary (browser-compatible)
+        const binaryString = atob(txBase64);
+        const txBuf = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          txBuf[i] = binaryString.charCodeAt(i);
+        }
+
         const signResponse = await provider.signTransaction(txBuf);
         console.log('Signed, broadcasting...');
+
+        // Encode Uint8Array to base64 (browser-compatible)
+        const binaryStr = String.fromCharCode.apply(null, Array.from(signResponse));
+        const encodedTx = btoa(binaryStr);
 
         // Broadcast to Solana RPC
         const rpcUrl = 'https://api.mainnet-beta.solana.com';
@@ -1303,7 +1313,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
             jsonrpc: '2.0',
             id: 1,
             method: 'sendTransaction',
-            params: [signResponse.toString('base64')],
+            params: [encodedTx],
           }),
         });
 
