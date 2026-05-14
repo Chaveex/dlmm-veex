@@ -1045,7 +1045,11 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
 
   </div>
 
+  <script src="https://unpkg.com/@solana/web3.js@1.78.0"></script>
   <script>
+    // Access solanaWeb3 global from CDN
+    const solanaWeb3 = window.solanaWeb3;
+
     let currentPage = 1;
     let totalPages = 1;
     const poolsCache = {}; // address → pool object
@@ -1290,19 +1294,27 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
           throw new Error('Phantom provider not available');
         }
 
-        // Decode base64 to binary (browser-compatible)
+        // Decode base64 and reconstruct Transaction
+        if (!solanaWeb3 || !solanaWeb3.Transaction) {
+          throw new Error('Solana Web3 library not loaded');
+        }
+
         const binaryString = atob(txBase64);
         const txBuf = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
           txBuf[i] = binaryString.charCodeAt(i);
         }
 
-        const signResponse = await provider.signTransaction(txBuf);
+        // Deserialize to Transaction object
+        const tx = solanaWeb3.Transaction.from(txBuf);
+        console.log('Got transaction, requesting Phantom signature...');
+
+        // Sign with Phantom
+        const signedTx = await provider.signTransaction(tx);
         console.log('Signed, broadcasting...');
 
-        // Encode Uint8Array to base64 (browser-compatible)
-        const binaryStr = String.fromCharCode.apply(null, Array.from(signResponse));
-        const encodedTx = btoa(binaryStr);
+        // Serialize signed transaction to base64
+        const encodedTx = btoa(String.fromCharCode.apply(null, signedTx.serialize()));
 
         // Broadcast to Solana RPC
         const rpcUrl = 'https://api.mainnet-beta.solana.com';
