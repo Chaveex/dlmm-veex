@@ -1024,6 +1024,8 @@
             <span id="walletAddress"></span>
             <button id="disconnectBtn" class="btn-disconnect" onclick="handleDisconnect()">✕</button>
           </div>
+          <span id="networkBadge" style="background: #667eea; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.85em; font-weight: 600;"></span>
+          <button id="airdropBtn" class="btn-wallet" onclick="requestAirdrop()" style="display: none; background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);">💰 Airdrop</button>
         </div>
       </div>
 
@@ -1423,6 +1425,79 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       return null;
     }
 
+    let networkInfo = { devnet: false, network: 'mainnet' };
+
+    async function loadNetworkInfo() {
+      try {
+        const res = await fetch('/api/network');
+        if (res.ok) {
+          networkInfo = await res.json();
+          networkInfo = networkInfo.data || networkInfo;
+          updateNetworkBadge();
+        }
+      } catch (err) {
+        console.warn('Failed to load network info:', err);
+      }
+    }
+
+    function updateNetworkBadge() {
+      const badge = document.getElementById('networkBadge');
+      const airdropBtn = document.getElementById('airdropBtn');
+
+      if (networkInfo.devnet) {
+        badge.textContent = '🌐 DEVNET';
+        badge.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%)';
+        if (connectedWallet) {
+          airdropBtn.style.display = 'block';
+        }
+      } else {
+        badge.textContent = '🌍 MAINNET';
+        badge.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        airdropBtn.style.display = 'none';
+      }
+    }
+
+    async function requestAirdrop() {
+      if (!connectedWallet) {
+        alert('Connect wallet first');
+        return;
+      }
+
+      if (!networkInfo.devnet) {
+        alert('Airdrop only available on devnet');
+        return;
+      }
+
+      const btn = document.getElementById('airdropBtn');
+      btn.disabled = true;
+      btn.textContent = '💸 Airdropping...';
+
+      try {
+        const res = await fetch('/api/airdrop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: connectedWallet.publicKey }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`Server error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Airdrop failed');
+        }
+
+        alert(`✅ Airdropped 2 SOL!\nTx: ${data.data.signature}`);
+      } catch (err) {
+        alert('❌ Airdrop failed: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        console.error('Airdrop error:', err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💰 Airdrop';
+      }
+    }
+
     async function handleWalletClick() {
       const provider = getProvider();
       if (!provider) {
@@ -1471,6 +1546,8 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         walletBtn.style.display = 'block';
         walletInfo.style.display = 'none';
       }
+
+      updateNetworkBadge();
 
       // Update tx widget visibility
       updateTxWidget();
@@ -2604,6 +2681,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
     });
 
     // Initialize on page load
+    loadNetworkInfo();
     checkWalletConnection();
     updateTxWidget();
     updatePositionsWidget();
