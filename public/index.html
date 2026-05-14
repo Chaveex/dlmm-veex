@@ -953,15 +953,11 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
 
   </div>
 
-  <script src="https://unpkg.com/@solana/web3.js@latest"></script>
   <script>
     let currentPage = 1;
     let totalPages = 1;
     const poolsCache = {}; // address → pool object
     let connectedWallet = null; // { publicKey: string }
-
-    // Destructure Solana web3.js globals
-    const { Connection, Transaction, PublicKey } = window.solanaWeb3;
 
     // Phantom wallet integration
     function getProvider() {
@@ -1130,7 +1126,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
 
       try {
         console.log('Building transaction...', selectedAddress, amount);
-        // Request tx from backend
+        // Request unsigned tx from backend
         const buildRes = await fetch('/api/build-transaction', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1138,7 +1134,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
             pool_address: selectedAddress,
             wallet_pubkey: connectedWallet.publicKey,
             amount: amount,
-            is_bid: true, // Buy/bid
+            is_bid: true,
           }),
         });
 
@@ -1148,21 +1144,33 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         }
 
         const txBase64 = buildData.data.transaction;
-        console.log('Got transaction, requesting signature...');
+        console.log('Got transaction, requesting Phantom signature...');
 
-        // Deserialize and sign with Phantom
-        const txBuf = Buffer.from(txBase64, 'base64');
-        const tx = Transaction.from(txBuf);
-
+        // Sign with Phantom (provider handles binary data)
         const provider = getProvider();
-        const signedTx = await provider.signTransaction(tx);
+        const txBuf = Buffer.from(txBase64, 'base64');
+        const signResponse = await provider.signTransaction(txBuf);
         console.log('Signed, broadcasting...');
 
-        // Broadcast to Solana
+        // Broadcast to Solana via RPC
         const rpcUrl = 'https://api.mainnet-beta.solana.com';
-        const connection = new Connection(rpcUrl);
-        const txId = await connection.sendRawTransaction(signedTx.serialize());
+        const broadcastRes = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'sendTransaction',
+            params: [signResponse.toString('base64')],
+          }),
+        });
 
+        const broadcastData = await broadcastRes.json();
+        if (broadcastData.error) {
+          throw new Error(broadcastData.error.message);
+        }
+
+        const txId = broadcastData.result;
         console.log('Broadcast success:', txId);
         showTxSuccess(txId);
       } catch (err) {
