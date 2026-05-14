@@ -239,6 +239,50 @@ app.post('/api/build-transaction', async (req, res) => {
   }
 });
 
+app.post('/api/user-positions', async (req, res) => {
+  const { wallet } = req.body;
+
+  if (!wallet) {
+    res.status(400).json({ success: false, error: 'wallet required' });
+    return;
+  }
+
+  try {
+    // TODO: Fetch positions from blockchain
+    // For now, return empty positions (demo)
+    // In production, would query Solana RPC for wallet's DLMM positions
+
+    interface Position {
+      pool: string;
+      deposited: number;
+      feesCollected: number;
+      pnl: number;
+      inRange: boolean;
+    }
+
+    const positions: Position[] = [
+      // Example structure:
+      // {
+      //   pool: 'SOL/USDC',
+      //   deposited: 5.5,
+      //   feesCollected: 12.45,
+      //   pnl: 2.3,
+      //   inRange: true,
+      // },
+    ];
+
+    res.json({
+      success: true,
+      data: { positions },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
 app.post('/api/strategy-recommend', async (req, res) => {
   const { pool, amount, score } = req.body;
 
