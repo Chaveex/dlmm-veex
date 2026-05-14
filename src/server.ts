@@ -308,10 +308,6 @@ app.post('/api/user-positions', async (req, res) => {
   }
 
   try {
-    // TODO: Fetch positions from blockchain
-    // For now, return empty positions (demo)
-    // In production, would query Solana RPC for wallet's DLMM positions
-
     interface Position {
       pool: string;
       deposited: number;
@@ -320,16 +316,40 @@ app.post('/api/user-positions', async (req, res) => {
       inRange: boolean;
     }
 
-    const positions: Position[] = [
-      // Example structure:
-      // {
-      //   pool: 'SOL/USDC',
-      //   deposited: 5.5,
-      //   feesCollected: 12.45,
-      //   pnl: 2.3,
-      //   inRange: true,
-      // },
-    ];
+    let positions: Position[] = [];
+
+    // Check if mock mode is enabled
+    const mockMode = process.env.MOCK_MODE === 'true';
+
+    if (mockMode) {
+      // Return mock positions for testing
+      positions = [
+        {
+          pool: 'SOL/USDC',
+          deposited: 5.5,
+          feesCollected: 12.45,
+          pnl: 2.3,
+          inRange: true,
+        },
+        {
+          pool: 'SOL/USDT',
+          deposited: 8.2,
+          feesCollected: 18.67,
+          pnl: -1.5,
+          inRange: false,
+        },
+        {
+          pool: 'BONK/SOL',
+          deposited: 10.0,
+          feesCollected: 25.50,
+          pnl: 5.8,
+          inRange: true,
+        },
+      ];
+    } else {
+      // TODO: Fetch positions from blockchain
+      // In production, would query Solana RPC for wallet's DLMM positions
+    }
 
     res.json({
       success: true,
