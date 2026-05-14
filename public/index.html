@@ -410,6 +410,66 @@
       font-size: 1.1em;
     }
 
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.95em;
+    }
+
+    .alert-warning {
+      background: #fff3cd;
+      color: #856404;
+      border-left: 4px solid #ffc107;
+    }
+
+    .tx-result {
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      margin-top: 16px;
+    }
+
+    .tx-result.success {
+      background: #d4edda;
+      border-color: #28a745;
+    }
+
+    .tx-result.error {
+      background: #f8d7da;
+      border-color: #dc3545;
+    }
+
+    #txStatus {
+      font-weight: 600;
+      color: #333;
+    }
+
     .pagination {
       display: flex;
       gap: 10px;
@@ -860,13 +920,48 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       </div>
     </div>
 
+    <!-- Transaction Execution Widget -->
+    <div class="calc-card" id="txWidget">
+      <div class="calc-header" onclick="toggleTxWidget()">
+        <h2>🚀 Execute Transaction</h2>
+        <span id="txToggle">▼</span>
+      </div>
+
+      <div id="txBody">
+        <div style="display:none" id="txNotConnected" class="alert alert-warning">
+          ⚠️ Connect Phantom wallet first to execute transactions.
+        </div>
+
+        <div id="txReady" style="display:none">
+          <p style="color:#666; margin-bottom:15px;">Selected pool and amount from calculator above</p>
+          <button class="btn-primary" id="executeBtn" onclick="executeTransaction()">Sign & Broadcast</button>
+          <div id="txLoading" style="display:none" class="loading">Processing transaction...</div>
+        </div>
+
+        <div id="txResult" style="display:none" class="tx-result">
+          <div id="txStatus"></div>
+          <div id="txHashContainer" style="display:none; margin-top:15px;">
+            <p style="margin:0 0 8px 0; color:#666;">Transaction Hash:</p>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <code id="txHash" style="flex:1; background:#f5f5f5; padding:10px; border-radius:6px; word-break:break-all; font-size:0.85em;"></code>
+              <a id="txSolscan" target="_blank" style="padding:8px 12px; background:#667eea; color:white; text-decoration:none; border-radius:6px; font-size:0.85em; white-space:nowrap;">View →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
+  <script src="https://unpkg.com/@solana/web3.js@latest"></script>
   <script>
     let currentPage = 1;
     let totalPages = 1;
     const poolsCache = {}; // address → pool object
     let connectedWallet = null; // { publicKey: string }
+
+    // Destructure Solana web3.js globals
+    const { Connection, Transaction, PublicKey } = window.solanaWeb3;
 
     // Phantom wallet integration
     function getProvider() {
@@ -940,6 +1035,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         walletBtn.style.display = 'block';
         walletInfo.style.display = 'none';
       }
+
+      // Update tx widget visibility
+      updateTxWidget();
     }
 
     // Listen for wallet disconnect
@@ -972,6 +1070,134 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       } catch (err) {
         console.error('Error checking wallet connection:', err);
       }
+    }
+
+    // Transaction execution
+    let txWidgetOpen = true;
+
+    function toggleTxWidget() {
+      txWidgetOpen = !txWidgetOpen;
+      const txBody = document.getElementById('txBody');
+      const txToggle = document.getElementById('txToggle');
+      txBody.style.display = txWidgetOpen ? 'block' : 'none';
+      txToggle.textContent = txWidgetOpen ? '▼' : '▶';
+    }
+
+    function updateTxWidget() {
+      const txReady = document.getElementById('txReady');
+      const txNotConnected = document.getElementById('txNotConnected');
+
+      if (connectedWallet) {
+        txNotConnected.style.display = 'none';
+        txReady.style.display = 'block';
+      } else {
+        txNotConnected.style.display = 'block';
+        txReady.style.display = 'none';
+      }
+
+      // Reset result display
+      document.getElementById('txResult').style.display = 'none';
+    }
+
+    async function executeTransaction() {
+      if (!connectedWallet) {
+        alert('Connect wallet first');
+        return;
+      }
+
+      // Get values from calculator
+      const tvl = parseFloat(document.getElementById('cTvl').value);
+      const volume = parseFloat(document.getElementById('cVolume').value);
+      const fees = parseFloat(document.getElementById('cFees').value);
+      const amount = parseFloat(document.getElementById('cCapital').value);
+
+      if (!tvl || !volume || !fees || !amount) {
+        alert('Fill all calculator fields first');
+        return;
+      }
+
+      // Get selected pool from one of the table rows
+      const selectedAddress = Object.keys(poolsCache)[0];
+      if (!selectedAddress) {
+        alert('No pools loaded. Search pools first.');
+        return;
+      }
+
+      const executeBtn = document.getElementById('executeBtn');
+      const txLoading = document.getElementById('txLoading');
+      executeBtn.disabled = true;
+      txLoading.style.display = 'block';
+
+      try {
+        console.log('Building transaction...', selectedAddress, amount);
+        // Request tx from backend
+        const buildRes = await fetch('/api/build-transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pool_address: selectedAddress,
+            wallet_pubkey: connectedWallet.publicKey,
+            amount: amount,
+            is_bid: true, // Buy/bid
+          }),
+        });
+
+        const buildData = await buildRes.json();
+        if (!buildData.success) {
+          throw new Error(buildData.error || 'Failed to build tx');
+        }
+
+        const txBase64 = buildData.data.transaction;
+        console.log('Got transaction, requesting signature...');
+
+        // Deserialize and sign with Phantom
+        const txBuf = Buffer.from(txBase64, 'base64');
+        const tx = Transaction.from(txBuf);
+
+        const provider = getProvider();
+        const signedTx = await provider.signTransaction(tx);
+        console.log('Signed, broadcasting...');
+
+        // Broadcast to Solana
+        const rpcUrl = 'https://api.mainnet-beta.solana.com';
+        const connection = new Connection(rpcUrl);
+        const txId = await connection.sendRawTransaction(signedTx.serialize());
+
+        console.log('Broadcast success:', txId);
+        showTxSuccess(txId);
+      } catch (err) {
+        console.error('Transaction failed:', err);
+        showTxError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        executeBtn.disabled = false;
+        txLoading.style.display = 'none';
+      }
+    }
+
+    function showTxSuccess(txId) {
+      const txResult = document.getElementById('txResult');
+      const txStatus = document.getElementById('txStatus');
+      const txHashContainer = document.getElementById('txHashContainer');
+      const txHash = document.getElementById('txHash');
+      const txSolscan = document.getElementById('txSolscan');
+
+      txResult.className = 'tx-result success';
+      txStatus.textContent = '✅ Transaction confirmed!';
+      txHash.textContent = txId;
+      txSolscan.href = `https://solscan.io/tx/${txId}`;
+      txHashContainer.style.display = 'block';
+      txResult.style.display = 'block';
+    }
+
+    function showTxError(error) {
+      const txResult = document.getElementById('txResult');
+      const txStatus = document.getElementById('txStatus');
+      const txHashContainer = document.getElementById('txHashContainer');
+
+      txResult.className = 'tx-result error';
+      txStatus.textContent = '❌ Error: ' + error;
+      txHashContainer.style.display = 'none';
+      txResult.style.display = 'block';
     }
 
     async function fetchData(page = 1) {
@@ -1433,8 +1659,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       }
     });
 
-    // Initialize wallet on page load
+    // Initialize on page load
     checkWalletConnection();
+    updateTxWidget();
   </script>
 </body>
 </html>
