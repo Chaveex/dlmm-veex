@@ -330,6 +330,17 @@
     }
     .btn-calc:hover { opacity: 1; }
 
+    .btn-close-pos {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      padding: 6px 12px;
+      font-size: 0.9em;
+      min-width: 70px;
+    }
+
+    .btn-close-pos:hover {
+      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    }
+
     .security-flags {
       font-size: 0.78em;
       color: #666;
@@ -1367,6 +1378,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
                 <th>Fees Collected</th>
                 <th>PnL (Unrealized)</th>
                 <th>Status</th>
+                <th style="width:80px;">Action</th>
               </tr>
             </thead>
             <tbody id="positionsTableBody"></tbody>
@@ -1565,16 +1577,18 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         }
 
         const positions = data.data.positions || [];
+        loadedPositions = positions; // Store for closePosition access
         if (positions.length === 0) {
           empty.style.display = 'block';
         } else {
-          tbody.innerHTML = positions.map(p => `
+          tbody.innerHTML = positions.map((p, idx) => `
             <tr>
               <td><strong>${p.pool}</strong></td>
               <td>${p.deposited.toFixed(4)} SOL</td>
               <td>$${p.feesCollected.toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
               <td style="color:${p.pnl >= 0 ? '#28a745' : '#dc3545'};"><strong>${p.pnl >= 0 ? '+' : ''}${p.pnl.toFixed(2)}%</strong></td>
               <td><span class="status-badge ${p.inRange ? 'in-range' : 'out-range'}">${p.inRange ? 'In Range' : 'Out of Range'}</span></td>
+              <td><button class="btn-close-pos" onclick="closePosition(${idx}, '${p.pool}')">Close</button></td>
             </tr>
           `).join('');
           table.style.display = 'table';
@@ -1585,6 +1599,135 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         error.style.display = 'block';
       } finally {
         loading.style.display = 'none';
+      }
+    }
+
+    let loadedPositions = []; // Store loaded positions for closePosition access
+
+    async function closePosition(idx, poolName) {
+      if (!connectedWallet) {
+        showTxError('Connect wallet first');
+        return;
+      }
+
+      const position = loadedPositions[idx];
+      if (!position) {
+        showTxError('Position not found');
+        return;
+      }
+
+      const closeBtn = event.target;
+      closeBtn.disabled = true;
+      closeBtn.textContent = 'Closing...';
+
+      try {
+        // Build close transaction (removeLiquidity + claimFees)
+        const buildRes = await fetch('/api/build-close-tx', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            position,
+            wallet_pubkey: connectedWallet.publicKey,
+          }),
+        });
+
+        if (!buildRes.ok) {
+          throw new Error(`Backend error: ${buildRes.status}`);
+        }
+
+        let buildData;
+        try {
+          buildData = await buildRes.json();
+        } catch (parseErr) {
+          throw new Error('Invalid server response');
+        }
+
+        if (!buildData.success) {
+          const errMsg = typeof buildData.error === 'string' ? buildData.error : 'Failed to build transaction';
+          throw new Error(errMsg);
+        }
+
+        const txBase64 = buildData.data.transaction;
+
+        // Sign with Phantom
+        const provider = getProvider();
+        if (!provider) {
+          throw new Error('Phantom provider not available');
+        }
+
+        // Ensure Web3.js is loaded
+        const web3Ready = await ensureWeb3Loaded();
+        if (!web3Ready) {
+          throw new Error('Solana Web3.js failed to load');
+        }
+
+        const Transaction = window.solanaWeb3?.Transaction;
+        if (!Transaction) {
+          throw new Error('Solana Web3.js not available');
+        }
+
+        // Decode base64 and reconstruct Transaction
+        const binaryString = atob(txBase64);
+        const txBuf = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          txBuf[i] = binaryString.charCodeAt(i);
+        }
+
+        const tx = Transaction.from(txBuf);
+
+        // Sign with Phantom
+        const signedTx = await provider.signTransaction(tx);
+
+        // Serialize signed transaction to base64
+        const serialized = signedTx.serialize();
+        const binaryStr = String.fromCharCode(...Array.from(new Uint8Array(serialized)));
+        const encodedTx = btoa(binaryStr);
+
+        // Broadcast to Solana RPC
+        const rpcUrl = 'https://api.mainnet-beta.solana.com';
+        const broadcastRes = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'sendTransaction',
+            params: [encodedTx],
+          }),
+        });
+
+        let broadcastData;
+        try {
+          broadcastData = await broadcastRes.json();
+        } catch (parseErr) {
+          throw new Error('RPC response invalid');
+        }
+
+        if (broadcastData.error) {
+          let errMsg = 'Broadcast failed';
+          if (typeof broadcastData.error === 'string') {
+            errMsg = broadcastData.error;
+          } else if (broadcastData.error.message && typeof broadcastData.error.message === 'string') {
+            errMsg = broadcastData.error.message;
+          }
+          throw new Error(errMsg);
+        }
+
+        const txId = broadcastData.result;
+        console.log('Close position broadcast success:', txId);
+
+        // Show success with Solscan link
+        const solscanUrl = `https://solscan.io/tx/${txId}`;
+        showTxSuccess(txId);
+
+        // Reload positions after 2 seconds
+        setTimeout(() => loadPositions(), 2000);
+      } catch (err) {
+        console.error('Close position failed:', err);
+        showTxError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        closeBtn.disabled = false;
+        closeBtn.textContent = 'Close';
       }
     }
 
