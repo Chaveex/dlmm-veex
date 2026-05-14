@@ -639,6 +639,26 @@
       font-weight: 700;
     }
 
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-badge.in-range {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.out-range {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
     .tx-preview {
       background: white;
       border: 1px solid #e9ecef;
@@ -1318,6 +1338,47 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       </div>
     </div>
 
+    <!-- Open Positions Dashboard -->
+    <div class="calc-card" id="positionsWidget">
+      <div class="calc-header" onclick="togglePositionsWidget()">
+        <h2>💼 My Positions</h2>
+        <span id="positionsToggle">▼</span>
+      </div>
+
+      <div id="positionsBody">
+        <div style="display:none" id="posNotConnected" class="alert alert-warning">
+          ⚠️ Connect wallet to view your positions.
+        </div>
+
+        <div id="posReady" style="display:none">
+          <div style="display:flex; gap:12px; margin-bottom:20px;">
+            <button class="btn-secondary" onclick="loadPositions()" style="background:#667eea; color:white; flex:1;">Refresh Positions</button>
+          </div>
+
+          <div id="positionsLoading" style="display:none" class="loading">Loading positions...</div>
+
+          <div id="positionsError" style="display:none" class="alert alert-warning"></div>
+
+          <table id="positionsTable" class="pools-table" style="width:100%; display:none;">
+            <thead>
+              <tr>
+                <th>Pool</th>
+                <th>Deposited</th>
+                <th>Fees Collected</th>
+                <th>PnL (Unrealized)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="positionsTableBody"></tbody>
+          </table>
+
+          <div id="positionsEmpty" style="text-align:center; padding:40px; color:#999;">
+            No positions found. Start by executing a transaction above.
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -1446,6 +1507,87 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       txToggle.textContent = txWidgetOpen ? '▼' : '▶';
     }
 
+    // Positions dashboard
+    let positionsWidgetOpen = true;
+
+    function togglePositionsWidget() {
+      positionsWidgetOpen = !positionsWidgetOpen;
+      const posBody = document.getElementById('positionsBody');
+      const posToggle = document.getElementById('positionsToggle');
+      posBody.style.display = positionsWidgetOpen ? 'block' : 'none';
+      posToggle.textContent = positionsWidgetOpen ? '▼' : '▶';
+    }
+
+    function updatePositionsWidget() {
+      const posReady = document.getElementById('posReady');
+      const posNotConnected = document.getElementById('posNotConnected');
+
+      if (connectedWallet) {
+        posNotConnected.style.display = 'none';
+        posReady.style.display = 'block';
+      } else {
+        posNotConnected.style.display = 'block';
+        posReady.style.display = 'none';
+      }
+    }
+
+    async function loadPositions() {
+      if (!connectedWallet) {
+        showTxError('Connect wallet first');
+        return;
+      }
+
+      const loading = document.getElementById('positionsLoading');
+      const error = document.getElementById('positionsError');
+      const table = document.getElementById('positionsTable');
+      const empty = document.getElementById('positionsEmpty');
+      const tbody = document.getElementById('positionsTableBody');
+
+      loading.style.display = 'block';
+      error.style.display = 'none';
+      table.style.display = 'none';
+      empty.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/user-positions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ wallet: connectedWallet.publicKey }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`Server error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to load positions');
+        }
+
+        const positions = data.data.positions || [];
+        if (positions.length === 0) {
+          empty.style.display = 'block';
+        } else {
+          tbody.innerHTML = positions.map(p => `
+            <tr>
+              <td><strong>${p.pool}</strong></td>
+              <td>${p.deposited.toFixed(4)} SOL</td>
+              <td>$${p.feesCollected.toLocaleString('en-US', { maximumFractionDigits: 2 })}</td>
+              <td style="color:${p.pnl >= 0 ? '#28a745' : '#dc3545'};"><strong>${p.pnl >= 0 ? '+' : ''}${p.pnl.toFixed(2)}%</strong></td>
+              <td><span class="status-badge ${p.inRange ? 'in-range' : 'out-range'}">${p.inRange ? 'In Range' : 'Out of Range'}</span></td>
+            </tr>
+          `).join('');
+          table.style.display = 'table';
+        }
+      } catch (err) {
+        console.error('Load positions failed:', err);
+        error.textContent = 'Error: ' + (err instanceof Error ? err.message : 'Unknown error');
+        error.style.display = 'block';
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
     function updateTxWidget() {
       const txReady = document.getElementById('txReady');
       const txNotConnected = document.getElementById('txNotConnected');
@@ -1461,6 +1603,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
 
       // Reset result display
       document.getElementById('txResult').style.display = 'none';
+
+      // Update positions widget
+      updatePositionsWidget();
     }
 
     function updateTxPreview() {
@@ -2318,6 +2463,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
     // Initialize on page load
     checkWalletConnection();
     updateTxWidget();
+    updatePositionsWidget();
   </script>
 </body>
 </html>
