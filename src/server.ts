@@ -7,6 +7,7 @@ import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } 
 import { checkPoolSecurity } from './tokenSecurity';
 import { analyzePool } from './poolAnalysis';
 import { batchAnalyzePools } from './batchAnalyzer';
+import { buildDlmmTransaction, BuildTransactionRequest } from './transactionBuilder';
 
 const app = express();
 app.use(express.json());
@@ -193,6 +194,41 @@ app.post('/api/analyze', async (req, res) => {
 
   try {
     const result = await analyzePool(pool);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.post('/api/build-transaction', async (req, res) => {
+  const { pool_address, wallet_pubkey, amount, is_bid } = req.body as BuildTransactionRequest;
+
+  if (!pool_address || !wallet_pubkey || amount === undefined || is_bid === undefined) {
+    res.status(400).json({
+      success: false,
+      error: 'pool_address, wallet_pubkey, amount, is_bid required',
+    });
+    return;
+  }
+
+  if (typeof amount !== 'number' || amount <= 0) {
+    res.status(400).json({
+      success: false,
+      error: 'amount must be positive number',
+    });
+    return;
+  }
+
+  try {
+    const result = await buildDlmmTransaction({
+      pool_address,
+      wallet_pubkey,
+      amount,
+      is_bid: Boolean(is_bid),
+    });
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({
