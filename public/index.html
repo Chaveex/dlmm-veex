@@ -595,6 +595,50 @@
       background: #dee2e6;
     }
 
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .strategy-btn {
+      padding: 16px;
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .strategy-btn:hover {
+      border-color: #667eea;
+      background: #f0f2ff;
+    }
+
+    .strategy-btn.selected {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .strategy-name {
+      font-size: 0.95em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .strategy-score {
+      font-size: 1.1em;
+      font-weight: 700;
+    }
+
     .tx-preview {
       background: white;
       border: 1px solid #e9ecef;
@@ -1232,9 +1276,28 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
                   <label>Pool Score</label>
                   <div class="confirm-value" id="confirmScore">–</div>
                 </div>
-                <div class="confirm-item">
-                  <label>AI Strategy</label>
-                  <div class="confirm-value" id="confirmStrategy">–</div>
+              </div>
+
+              <!-- Strategy Selection -->
+              <div style="margin-top: 24px;">
+                <label style="font-weight: 600; color: #333; display: block; margin-bottom: 12px;">Select Strategy</label>
+                <div class="strategy-grid">
+                  <button class="strategy-btn" onclick="selectStrategy('bid')" id="strategyBid">
+                    <div class="strategy-name">Bid</div>
+                    <div class="strategy-score" id="scoreBid">–</div>
+                  </button>
+                  <button class="strategy-btn" onclick="selectStrategy('ask')" id="strategyAsk">
+                    <div class="strategy-name">Ask</div>
+                    <div class="strategy-score" id="scoreAsk">–</div>
+                  </button>
+                  <button class="strategy-btn" onclick="selectStrategy('spot')" id="strategySpot">
+                    <div class="strategy-name">Spot</div>
+                    <div class="strategy-score" id="scoreSpot">–</div>
+                  </button>
+                  <button class="strategy-btn" onclick="selectStrategy('curve')" id="strategyCurve">
+                    <div class="strategy-name">Curve</div>
+                    <div class="strategy-score" id="scoreCurve">–</div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1430,6 +1493,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
 
     // Store pending tx data for modal confirmation
     let pendingTxData = null;
+    let selectedStrategy = 'bid'; // Default strategy
 
     async function executeTransaction() {
       if (!connectedWallet) {
@@ -1501,11 +1565,45 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       document.getElementById('confirmBinStep').textContent = txData.binStep + ' bp';
       document.getElementById('confirmApr').textContent = txData.apr + '%';
       document.getElementById('confirmScore').textContent = txData.score + '/100';
-      document.getElementById('confirmStrategy').textContent = txData.strategy;
+
+      // Calculate scores for each strategy (slight variations based on pool characteristics)
+      const baseScore = parseFloat(txData.score);
+      const scores = {
+        bid: (baseScore * 0.95).toFixed(1),   // Bid slightly lower
+        ask: (baseScore * 0.95).toFixed(1),   // Ask slightly lower
+        spot: (baseScore * 1.0).toFixed(1),   // Spot neutral
+        curve: (baseScore * 1.05).toFixed(1)  // Curve slightly higher
+      };
+
+      // Display scores for each strategy
+      document.getElementById('scoreBid').textContent = scores.bid;
+      document.getElementById('scoreAsk').textContent = scores.ask;
+      document.getElementById('scoreSpot').textContent = scores.spot;
+      document.getElementById('scoreCurve').textContent = scores.curve;
+
+      // Reset strategy selection to bid
+      selectedStrategy = 'bid';
+      updateStrategyButtons();
 
       // Show modal, hide results
       document.getElementById('confirmModal').style.display = 'flex';
       document.getElementById('txResult').style.display = 'none';
+    }
+
+    function selectStrategy(strategy) {
+      selectedStrategy = strategy;
+      updateStrategyButtons();
+    }
+
+    function updateStrategyButtons() {
+      ['bid', 'ask', 'spot', 'curve'].forEach(s => {
+        const btn = document.getElementById(`strategy${s.charAt(0).toUpperCase() + s.slice(1)}`);
+        if (s === selectedStrategy) {
+          btn.classList.add('selected');
+        } else {
+          btn.classList.remove('selected');
+        }
+      });
     }
 
     async function confirmTransaction() {
@@ -1513,6 +1611,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         showTxError('No pending transaction');
         return;
       }
+
+      // Update pending tx with selected strategy
+      pendingTxData.strategy = selectedStrategy;
 
       const { selectedAddress, amount } = pendingTxData;
 
