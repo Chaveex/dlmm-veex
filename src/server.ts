@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import axios from 'axios';
+import Anthropic from '@anthropic-ai/sdk';
 import { PoolData } from './types';
 import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
 import { checkPoolSecurity } from './tokenSecurity';
@@ -230,6 +231,78 @@ app.post('/api/build-transaction', async (req, res) => {
       is_bid: Boolean(is_bid),
     });
     res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.post('/api/strategy-recommend', async (req, res) => {
+  const { pool, amount, score } = req.body;
+
+  if (!pool || amount === undefined || score === undefined) {
+    res.status(400).json({ success: false, error: 'pool, amount, score required' });
+    return;
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(503).json({ success: false, error: 'ANTHROPIC_API_KEY not configured' });
+    return;
+  }
+
+  try {
+    const client = new Anthropic();
+    const prompt = `You are an expert in DLMM (Dynamic Liquidity Market Maker) on Meteora protocol.
+
+Pool Analysis:
+- Pair: ${pool.pair}
+- TVL: $${pool.tvl.toLocaleString()}
+- 24h Volume: $${pool.volume24h.toLocaleString()}
+- 24h Fees: $${pool.fees24h.toLocaleString()}
+- Volume/TVL Ratio: ${pool.volumeTvlRatio.toFixed(2)}x
+- Fee/TVL Ratio: ${pool.feeTvlRatioPercent.toFixed(2)}%
+- Pool Age: ${pool.poolAge.toFixed(0)}s
+- Bin Step: ${pool.binStep}bp
+- Pool Score: ${score}/100
+
+User wants to provide liquidity with ${amount} SOL.
+
+DLMM Meteora Strategies:
+1. Bid-Ask Spread: Dual-sided liquidity capture (best for high volume/volatility, captures fees both ways)
+2. One-Sided Bid: Directional bullish position (use if expecting price increase)
+3. One-Sided Ask: Directional bearish position (use if expecting price decrease)
+4. Concentrated Spot: Capital-efficient liquidity around current price (best for stable pairs, low vol)
+
+Based on the pool characteristics, recommend THE BEST strategy for this user.
+
+Respond in JSON format ONLY:
+{
+  "strategy": "Strategy Name (must be exactly one of: Bid-Ask Spread, One-Sided Bid, One-Sided Ask, Concentrated Spot)",
+  "reasoning": "Brief explanation why this strategy is best for this pool (max 50 words)"
+}`;
+
+    const response = await client.messages.create({
+      model: 'claude-opus-4-7',
+      max_tokens: 200,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No JSON in response');
+    }
+
+    const result = JSON.parse(jsonMatch[0]);
+    res.json({
+      success: true,
+      data: {
+        strategy: result.strategy,
+        reasoning: result.reasoning,
+      },
+    });
   } catch (error) {
     res.status(500).json({
       success: false,

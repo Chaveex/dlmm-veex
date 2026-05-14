@@ -1300,10 +1300,17 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
                   </button>
                 </div>
               </div>
+
+              <!-- AI Recommendation -->
+              <div id="aiRecommendation" style="display:none; margin-top:20px; padding:16px; background:#f0f2ff; border-radius:8px; border-left:4px solid #667eea;">
+                <div style="font-weight:600; color:#333; margin-bottom:8px;">🤖 AI Recommends:</div>
+                <div id="aiRecommendText" style="color:#555; font-size:0.95em;"></div>
+              </div>
             </div>
 
             <div class="modal-footer">
               <button class="btn-secondary" onclick="cancelTransaction()">Cancel</button>
+              <button class="btn-secondary" onclick="askAI()" style="background:#667eea; color:white;">Ask IA</button>
               <button class="btn-primary" onclick="confirmTransaction()">Confirm & Sign</button>
             </div>
           </div>
@@ -1608,6 +1615,72 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
           }
         }
       });
+    }
+
+    async function askAI() {
+      if (!pendingTxData) {
+        showTxError('No pending transaction');
+        return;
+      }
+
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Analyzing...';
+
+      try {
+        const pool = pendingTxData.pool;
+        const res = await fetch('/api/strategy-recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pool: {
+              pair: pool.pair,
+              address: pool.address,
+              tvl: pool.tvl,
+              volume24h: pool.volume24h,
+              fees24h: pool.fees24h,
+              poolAge: pool.poolAge,
+              binStep: pool.binStep,
+              feeTvlRatioPercent: pool.feeTvlRatioPercent,
+              volumeTvlRatio: pool.volumeTvlRatio,
+            },
+            amount: pendingTxData.amount,
+            score: parseFloat(pendingTxData.score),
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`Server error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to get recommendation');
+        }
+
+        // Display recommendation
+        const rec = data.data;
+        const recDiv = document.getElementById('aiRecommendation');
+        const recText = document.getElementById('aiRecommendText');
+
+        recText.innerHTML = `<strong>${rec.strategy}</strong> — ${rec.reasoning}`;
+        recDiv.style.display = 'block';
+
+        // Auto-select recommended strategy
+        selectedStrategy = rec.strategy.toLowerCase().replace('-', '').replace(' ', '');
+        if (rec.strategy.includes('Bid-Ask')) selectedStrategy = 'bidask';
+        else if (rec.strategy.includes('One-Sided Bid')) selectedStrategy = 'bid';
+        else if (rec.strategy.includes('One-Sided Ask')) selectedStrategy = 'ask';
+        else if (rec.strategy.includes('Concentrated')) selectedStrategy = 'spot';
+
+        updateStrategyButtons();
+      } catch (err) {
+        console.error('AI recommendation failed:', err);
+        showTxError('Failed to get AI recommendation: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ask IA';
+      }
     }
 
     async function confirmTransaction() {
