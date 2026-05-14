@@ -3,8 +3,8 @@ import { Connection, PublicKey, Transaction, Keypair } from '@solana/web3.js';
 const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
 const connection = new Connection(RPC_URL, 'confirmed');
 
-// Meteora DLMM program ID
-const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XQoLTIJZ0raUeMb9eempW2791qB3Cris');
+// Meteora DLMM program ID (placeholder, frontend constructs real instruction)
+const DLMM_PROGRAM_ID = '11111111111111111111111111111111';
 
 export interface BuildTransactionRequest {
   pool_address: string;
@@ -42,7 +42,7 @@ export async function buildDlmmTransaction(
     // Add placeholder instruction (frontend provides actual swap instruction)
     // This ensures proper transaction structure and gas estimation
     tx.add({
-      programId: DLMM_PROGRAM_ID,
+      programId: new PublicKey(DLMM_PROGRAM_ID),
       keys: [
         { pubkey: poolAddress, isSigner: false, isWritable: true },
         { pubkey: walletPubkey, isSigner: true, isWritable: true },
