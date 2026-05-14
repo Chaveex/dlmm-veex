@@ -453,6 +453,8 @@
       border-radius: 8px;
       border: 1px solid #e9ecef;
       margin-top: 16px;
+      max-height: 200px;
+      overflow-y: auto;
     }
 
     .tx-result.success {
@@ -468,6 +470,10 @@
     #txStatus {
       font-weight: 600;
       color: #333;
+      word-wrap: break-word;
+      white-space: normal;
+      font-size: 0.95em;
+      line-height: 1.4;
     }
 
     .tx-preview {
@@ -774,6 +780,42 @@
   </style>
 </head>
 <body>
+  <script type="module">
+    import * as solanaWeb3 from 'https://esm.sh/@solana/web3.js@1.95.0';
+    window.solanaWeb3 = solanaWeb3;
+  </script>
+  <script>
+    // Wait for Web3.js to load and expose it globally
+    async function ensureWeb3Loaded() {
+      for (let i = 0; i < 50; i++) {
+        // Try multiple possible global names
+        if (window.solanaWeb3?.Transaction) return true;
+        if (window.SolanaWeb3?.Transaction) {
+          window.solanaWeb3 = window.SolanaWeb3;
+          return true;
+        }
+        if (window.Transaction) {
+          window.solanaWeb3 = { Transaction: window.Transaction, Connection: window.Connection, PublicKey: window.PublicKey, Keypair: window.Keypair };
+          return true;
+        }
+        // Wait 100ms before retrying
+        await new Promise(r => setTimeout(r, 100));
+      }
+      console.error('Web3.js failed to load after 5s');
+      return false;
+    }
+
+    // Initial check - debug log what's available
+    console.log('Web3.js load check - window.solanaWeb3:', !!window.solanaWeb3, 'window.Transaction:', !!window.Transaction, 'window.SolanaWeb3:', !!window.SolanaWeb3);
+
+    if (!window.solanaWeb3?.Transaction && !window.Transaction) {
+      window.solanaWeb3 = {};
+    } else if (window.Transaction && !window.solanaWeb3?.Transaction) {
+      window.solanaWeb3 = { Transaction: window.Transaction, Connection: window.Connection, PublicKey: window.PublicKey, Keypair: window.Keypair };
+    }
+
+    console.log('Web3.js final - window.solanaWeb3.Transaction available:', !!window.solanaWeb3?.Transaction);
+  </script>
   <div id="global-tooltip"></div>
   <div class="container">
     <header>
@@ -1046,32 +1088,6 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
   </div>
 
   <script>
-    let solanaWeb3 = null;
-
-    // Load Solana Web3.js dynamically
-    function loadSolanaWeb3() {
-      return new Promise((resolve) => {
-        if (window.solanaWeb3) {
-          solanaWeb3 = window.solanaWeb3;
-          resolve();
-          return;
-        }
-
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/@solana/web3.js@1.78.0';
-        script.onload = () => {
-          // Try different namespace possibilities
-          solanaWeb3 = window.solanaWeb3 || window.SolanaWeb3 || window.web3;
-          if (!solanaWeb3 && window.SPLToken) {
-            // Try accessing from SPL namespace
-            solanaWeb3 = window;
-          }
-          resolve();
-        };
-        document.head.appendChild(script);
-      });
-    }
-
     let currentPage = 1;
     let totalPages = 1;
     const poolsCache = {}; // address → pool object
@@ -1304,7 +1320,8 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         }
 
         if (!buildData.success) {
-          throw new Error(buildData.error || 'Failed to build transaction');
+          const errMsg = typeof buildData.error === 'string' ? buildData.error : 'Failed to build transaction';
+          throw new Error(errMsg);
         }
 
         const txBase64 = buildData.data.transaction;
@@ -1317,10 +1334,13 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         }
 
         // Ensure Web3.js is loaded
-        await loadSolanaWeb3();
+        const web3Ready = await ensureWeb3Loaded();
+        if (!web3Ready) {
+          throw new Error('Solana Web3.js failed to load');
+        }
 
         // Access Transaction from loaded library
-        const Transaction = solanaWeb3?.Transaction || window.Transaction;
+        const Transaction = window.solanaWeb3?.Transaction;
         if (!Transaction) {
           throw new Error('Solana Web3.js not available');
         }
@@ -1341,7 +1361,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         console.log('Signed, broadcasting...');
 
         // Serialize signed transaction to base64
-        const encodedTx = btoa(String.fromCharCode.apply(null, signedTx.serialize()));
+        const serialized = signedTx.serialize();
+        const binaryStr = String.fromCharCode(...Array.from(new Uint8Array(serialized)));
+        const encodedTx = btoa(binaryStr);
 
         // Broadcast to Solana RPC
         const rpcUrl = 'https://api.mainnet-beta.solana.com';
@@ -1364,7 +1386,13 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         }
 
         if (broadcastData.error) {
-          throw new Error(broadcastData.error.message || 'Broadcast failed');
+          let errMsg = 'Broadcast failed';
+          if (typeof broadcastData.error === 'string') {
+            errMsg = broadcastData.error;
+          } else if (broadcastData.error.message && typeof broadcastData.error.message === 'string') {
+            errMsg = broadcastData.error.message;
+          }
+          throw new Error(errMsg);
         }
 
         const txId = broadcastData.result;
@@ -1399,8 +1427,14 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       const txStatus = document.getElementById('txStatus');
       const txHashContainer = document.getElementById('txHashContainer');
 
+      // Truncate very long errors to avoid overwhelming the UI
+      const maxLen = 150;
+      const displayError = typeof error === 'string' && error.length > maxLen
+        ? error.substring(0, maxLen) + '...'
+        : String(error);
+
       txResult.className = 'tx-result error';
-      txStatus.textContent = '❌ Error: ' + error;
+      txStatus.textContent = '❌ ' + displayError;
       txHashContainer.style.display = 'none';
       txResult.style.display = 'block';
     }
