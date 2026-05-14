@@ -870,23 +870,41 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
 
     // Phantom wallet integration
     function getProvider() {
+      // Try standard window.solana (Chrome, Firefox)
       if ('solana' in window) {
         const provider = window.solana;
-        if (provider.isPhantom) return provider;
+        if (provider && provider.isPhantom) {
+          console.log('Phantom found via window.solana');
+          return provider;
+        }
       }
+
+      // Fallback: check for other Solana provider properties
+      if (window.phantom && window.phantom.solana) {
+        const provider = window.phantom.solana;
+        if (provider.isPhantom) {
+          console.log('Phantom found via window.phantom.solana');
+          return provider;
+        }
+      }
+
+      console.warn('Phantom provider not found. window.solana:', window.solana, 'window.phantom:', window.phantom);
       return null;
     }
 
     async function handleWalletClick() {
       const provider = getProvider();
       if (!provider) {
+        console.error('No Phantom provider detected');
         alert('Phantom wallet not detected. Please install it from https://phantom.app');
         return;
       }
 
       try {
+        console.log('Connecting to Phantom...');
         const response = await provider.connect();
         connectedWallet = { publicKey: response.publicKey.toString() };
+        console.log('Connected:', connectedWallet.publicKey);
         updateWalletUI();
       } catch (err) {
         console.error('Failed to connect wallet:', err);
@@ -925,8 +943,10 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
     }
 
     // Listen for wallet disconnect
-    if (typeof window !== 'undefined' && window.solana) {
-      window.solana.on('disconnect', () => {
+    const provider = getProvider();
+    if (provider) {
+      provider.on('disconnect', () => {
+        console.log('Phantom disconnected');
         connectedWallet = null;
         updateWalletUI();
       });
@@ -935,9 +955,22 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
     // Check if already connected on page load
     async function checkWalletConnection() {
       const provider = getProvider();
-      if (provider && provider._publicKey) {
-        connectedWallet = { publicKey: provider._publicKey.toString() };
-        updateWalletUI();
+      if (!provider) {
+        console.log('No provider found on page load');
+        return;
+      }
+
+      try {
+        // Check if wallet is connected
+        if (provider.publicKey) {
+          connectedWallet = { publicKey: provider.publicKey.toString() };
+          console.log('Already connected:', connectedWallet.publicKey);
+          updateWalletUI();
+        } else {
+          console.log('Provider found but not connected');
+        }
+      } catch (err) {
+        console.error('Error checking wallet connection:', err);
       }
     }
 
