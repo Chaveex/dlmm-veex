@@ -3,6 +3,7 @@ import express from 'express';
 import path from 'path';
 import axios from 'axios';
 import Anthropic from '@anthropic-ai/sdk';
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
 import { PoolData } from './types';
 import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
 import { checkPoolSecurity } from './tokenSecurity';
@@ -17,6 +18,9 @@ const PORT = 3000;
 app.use(express.static(path.join(__dirname, '../public')));
 
 const API_URL = 'https://dlmm.datapi.meteora.ag/pools';
+const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
+const connection = new Connection(RPC_URL, 'confirmed');
+const DLMM_PROGRAM_ID = '11111111111111111111111111111111';
 
 const PAGE_SIZE = 50;
 const SEARCH_PAGES = 10; // fetch 10 pages = 500 pools for name search
@@ -235,6 +239,62 @@ app.post('/api/build-transaction', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+app.post('/api/build-close-tx', async (req, res) => {
+  const { position, wallet_pubkey } = req.body;
+
+  if (!position || !wallet_pubkey) {
+    res.status(400).json({ success: false, error: 'position, wallet_pubkey required' });
+    return;
+  }
+
+  try {
+    const walletPubkey = new PublicKey(wallet_pubkey);
+    const { blockhash } = await connection.getLatestBlockhash();
+
+    // Create unsigned transaction for closing position
+    const tx = new Transaction({
+      recentBlockhash: blockhash,
+      feePayer: walletPubkey,
+    });
+
+    // Add placeholder removeLiquidity instruction
+    // In production, this would construct the actual Meteora DLMM removeLiquidity instruction
+    tx.add({
+      programId: new PublicKey(DLMM_PROGRAM_ID),
+      keys: [
+        { pubkey: walletPubkey, isSigner: true, isWritable: true },
+      ],
+      data: Buffer.from([1]), // Placeholder for removeLiquidity
+    });
+
+    // Add placeholder claimFees instruction
+    tx.add({
+      programId: new PublicKey(DLMM_PROGRAM_ID),
+      keys: [
+        { pubkey: walletPubkey, isSigner: true, isWritable: true },
+      ],
+      data: Buffer.from([2]), // Placeholder for claimFees
+    });
+
+    // Serialize to Base64
+    const serialized = Buffer.from(tx.serialize({ requireAllSignatures: false })).toString('base64');
+
+    return res.json({
+      success: true,
+      data: {
+        transaction: serialized,
+        message: `Ready to close position: ${position.pool}`,
+      },
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({
+      success: false,
+      error: `Failed to build close transaction: ${msg}`,
     });
   }
 });
