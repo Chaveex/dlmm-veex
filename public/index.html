@@ -1045,10 +1045,32 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
 
   </div>
 
-  <script src="https://unpkg.com/@solana/web3.js@1.78.0"></script>
   <script>
-    // Access solanaWeb3 global from CDN
-    const solanaWeb3 = window.solanaWeb3;
+    let solanaWeb3 = null;
+
+    // Load Solana Web3.js dynamically
+    function loadSolanaWeb3() {
+      return new Promise((resolve) => {
+        if (window.solanaWeb3) {
+          solanaWeb3 = window.solanaWeb3;
+          resolve();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/@solana/web3.js@1.78.0';
+        script.onload = () => {
+          // Try different namespace possibilities
+          solanaWeb3 = window.solanaWeb3 || window.SolanaWeb3 || window.web3;
+          if (!solanaWeb3 && window.SPLToken) {
+            // Try accessing from SPL namespace
+            solanaWeb3 = window;
+          }
+          resolve();
+        };
+        document.head.appendChild(script);
+      });
+    }
 
     let currentPage = 1;
     let totalPages = 1;
@@ -1294,11 +1316,16 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
           throw new Error('Phantom provider not available');
         }
 
-        // Decode base64 and reconstruct Transaction
-        if (!solanaWeb3 || !solanaWeb3.Transaction) {
-          throw new Error('Solana Web3 library not loaded');
+        // Ensure Web3.js is loaded
+        await loadSolanaWeb3();
+
+        // Access Transaction from loaded library
+        const Transaction = solanaWeb3?.Transaction || window.Transaction;
+        if (!Transaction) {
+          throw new Error('Solana Web3.js not available');
         }
 
+        // Decode base64 and reconstruct Transaction
         const binaryString = atob(txBase64);
         const txBuf = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
@@ -1306,7 +1333,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         }
 
         // Deserialize to Transaction object
-        const tx = solanaWeb3.Transaction.from(txBuf);
+        const tx = Transaction.from(txBuf);
         console.log('Got transaction, requesting Phantom signature...');
 
         // Sign with Phantom
