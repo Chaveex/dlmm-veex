@@ -410,6 +410,140 @@
       font-size: 1.1em;
     }
 
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.95em;
+    }
+
+    .alert-warning {
+      background: #fff3cd;
+      color: #856404;
+      border-left: 4px solid #ffc107;
+    }
+
+    .tx-result {
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      margin-top: 16px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .tx-result.success {
+      background: #d4edda;
+      border-color: #28a745;
+    }
+
+    .tx-result.error {
+      background: #f8d7da;
+      border-color: #dc3545;
+    }
+
+    #txStatus {
+      font-weight: 600;
+      color: #333;
+      word-wrap: break-word;
+      white-space: normal;
+      font-size: 0.95em;
+      line-height: 1.4;
+    }
+
+    .tx-preview {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .preview-section {
+      margin-bottom: 16px;
+    }
+
+    .preview-section label {
+      display: block;
+      font-size: 0.8em;
+      font-weight: 600;
+      color: #999;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.05em;
+    }
+
+    .preview-value {
+      font-size: 0.95em;
+      color: #333;
+      padding: 10px 0;
+    }
+
+    .pool-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+    }
+
+    #selectedPoolName {
+      font-weight: 600;
+      color: #667eea;
+    }
+
+    .pool-addr {
+      font-family: 'Courier New', monospace;
+      font-size: 0.75em;
+      color: #999;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .preview-item label {
+      margin-bottom: 6px;
+    }
+
+    .preview-item .preview-value {
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: 500;
+    }
+
     .pagination {
       display: flex;
       gap: 10px;
@@ -646,6 +780,42 @@
   </style>
 </head>
 <body>
+  <script type="module">
+    import * as solanaWeb3 from 'https://esm.sh/@solana/web3.js@1.95.0';
+    window.solanaWeb3 = solanaWeb3;
+  </script>
+  <script>
+    // Wait for Web3.js to load and expose it globally
+    async function ensureWeb3Loaded() {
+      for (let i = 0; i < 50; i++) {
+        // Try multiple possible global names
+        if (window.solanaWeb3?.Transaction) return true;
+        if (window.SolanaWeb3?.Transaction) {
+          window.solanaWeb3 = window.SolanaWeb3;
+          return true;
+        }
+        if (window.Transaction) {
+          window.solanaWeb3 = { Transaction: window.Transaction, Connection: window.Connection, PublicKey: window.PublicKey, Keypair: window.Keypair };
+          return true;
+        }
+        // Wait 100ms before retrying
+        await new Promise(r => setTimeout(r, 100));
+      }
+      console.error('Web3.js failed to load after 5s');
+      return false;
+    }
+
+    // Initial check - debug log what's available
+    console.log('Web3.js load check - window.solanaWeb3:', !!window.solanaWeb3, 'window.Transaction:', !!window.Transaction, 'window.SolanaWeb3:', !!window.SolanaWeb3);
+
+    if (!window.solanaWeb3?.Transaction && !window.Transaction) {
+      window.solanaWeb3 = {};
+    } else if (window.Transaction && !window.solanaWeb3?.Transaction) {
+      window.solanaWeb3 = { Transaction: window.Transaction, Connection: window.Connection, PublicKey: window.PublicKey, Keypair: window.Keypair };
+    }
+
+    console.log('Web3.js final - window.solanaWeb3.Transaction available:', !!window.solanaWeb3?.Transaction);
+  </script>
   <div id="global-tooltip"></div>
   <div class="container">
     <header>
@@ -860,6 +1030,61 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       </div>
     </div>
 
+    <!-- Transaction Execution Widget -->
+    <div class="calc-card" id="txWidget">
+      <div class="calc-header" onclick="toggleTxWidget()">
+        <h2>🚀 Execute Transaction</h2>
+        <span id="txToggle">▼</span>
+      </div>
+
+      <div id="txBody">
+        <div style="display:none" id="txNotConnected" class="alert alert-warning">
+          ⚠️ Connect Phantom wallet first to execute transactions.
+        </div>
+
+        <div id="txReady" style="display:none">
+          <div class="tx-preview">
+            <div class="preview-section">
+              <label>Pool</label>
+              <div id="selectedPoolDisplay" class="preview-value pool-badge">
+                <span id="selectedPoolName">–</span>
+                <span id="selectedPoolAddr" class="pool-addr">–</span>
+              </div>
+            </div>
+
+            <div class="preview-grid">
+              <div class="preview-item">
+                <label>Amount</label>
+                <div class="preview-value" id="previewAmount">–</div>
+              </div>
+              <div class="preview-item">
+                <label>Est. APR</label>
+                <div class="preview-value" id="previewApr">–</div>
+              </div>
+              <div class="preview-item">
+                <label>Score</label>
+                <div class="preview-value" id="previewScore">–</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="btn-primary" id="executeBtn" onclick="executeTransaction()">Sign & Broadcast</button>
+          <div id="txLoading" style="display:none" class="loading">Processing transaction...</div>
+        </div>
+
+        <div id="txResult" style="display:none" class="tx-result">
+          <div id="txStatus"></div>
+          <div id="txHashContainer" style="display:none; margin-top:15px;">
+            <p style="margin:0 0 8px 0; color:#666;">Transaction Hash:</p>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <code id="txHash" style="flex:1; background:#f5f5f5; padding:10px; border-radius:6px; word-break:break-all; font-size:0.85em;"></code>
+              <a id="txSolscan" target="_blank" style="padding:8px 12px; background:#667eea; color:white; text-decoration:none; border-radius:6px; font-size:0.85em; white-space:nowrap;">View →</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -940,6 +1165,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         walletBtn.style.display = 'block';
         walletInfo.style.display = 'none';
       }
+
+      // Update tx widget visibility
+      updateTxWidget();
     }
 
     // Listen for wallet disconnect
@@ -972,6 +1200,243 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       } catch (err) {
         console.error('Error checking wallet connection:', err);
       }
+    }
+
+    // Transaction execution
+    let txWidgetOpen = true;
+
+    function toggleTxWidget() {
+      txWidgetOpen = !txWidgetOpen;
+      const txBody = document.getElementById('txBody');
+      const txToggle = document.getElementById('txToggle');
+      txBody.style.display = txWidgetOpen ? 'block' : 'none';
+      txToggle.textContent = txWidgetOpen ? '▼' : '▶';
+    }
+
+    function updateTxWidget() {
+      const txReady = document.getElementById('txReady');
+      const txNotConnected = document.getElementById('txNotConnected');
+
+      if (connectedWallet) {
+        txNotConnected.style.display = 'none';
+        txReady.style.display = 'block';
+        updateTxPreview();
+      } else {
+        txNotConnected.style.display = 'block';
+        txReady.style.display = 'none';
+      }
+
+      // Reset result display
+      document.getElementById('txResult').style.display = 'none';
+    }
+
+    function updateTxPreview() {
+      const tvl = parseFloat(document.getElementById('cTvl').value) || 0;
+      const volume = parseFloat(document.getElementById('cVolume').value) || 0;
+      const fees = parseFloat(document.getElementById('cFees').value) || 0;
+      const amount = parseFloat(document.getElementById('cCapital').value) || 0;
+
+      const selectedAddress = Object.keys(poolsCache)[0];
+      const selectedPool = selectedAddress ? poolsCache[selectedAddress] : null;
+
+      // Update pool display
+      if (selectedPool) {
+        document.getElementById('selectedPoolName').textContent = selectedPool.pair;
+        document.getElementById('selectedPoolAddr').textContent = selectedPool.address.slice(0, 8) + '...';
+      } else {
+        document.getElementById('selectedPoolName').textContent = '(No pool loaded)';
+        document.getElementById('selectedPoolAddr').textContent = '–';
+      }
+
+      // Update amounts
+      document.getElementById('previewAmount').textContent = amount > 0 ? amount.toFixed(2) + ' SOL' : '–';
+
+      // Calculate APR
+      const apr = tvl > 0 ? (fees * 365 / tvl) * 100 : 0;
+      document.getElementById('previewApr').textContent = apr > 0 ? apr.toFixed(1) + '%' : '–';
+
+      // Calculate score
+      const vtv = tvl > 0 ? volume / tvl : 0;
+      const feeRate = volume > 0 ? (fees / volume) * 100 : 0;
+      const vtvScore = Math.min((vtv / 3) * 100, 100);
+      const aprScore = Math.min((apr / 300) * 100, 100);
+      const feeScore = Math.min((feeRate / 0.5) * 100, 100);
+      const score = vtvScore * 0.50 + aprScore * 0.35 + feeScore * 0.15;
+      document.getElementById('previewScore').textContent = Math.max(0, Math.min(100, score)).toFixed(0) + '/100';
+    }
+
+    async function executeTransaction() {
+      if (!connectedWallet) {
+        showTxError('Connect wallet first');
+        return;
+      }
+
+      // Get values from calculator
+      const tvl = parseFloat(document.getElementById('cTvl').value);
+      const volume = parseFloat(document.getElementById('cVolume').value);
+      const fees = parseFloat(document.getElementById('cFees').value);
+      const amount = parseFloat(document.getElementById('cCapital').value);
+
+      if (!tvl || !volume || !fees || !amount) {
+        showTxError('Fill all calculator fields');
+        return;
+      }
+
+      // Get selected pool
+      const selectedAddress = Object.keys(poolsCache)[0];
+      if (!selectedAddress) {
+        showTxError('Load a pool first (use Search button)');
+        return;
+      }
+
+      const executeBtn = document.getElementById('executeBtn');
+      const txLoading = document.getElementById('txLoading');
+      executeBtn.disabled = true;
+      txLoading.style.display = 'block';
+
+      try {
+        console.log('Building transaction...', selectedAddress, amount);
+
+        const buildRes = await fetch('/api/build-transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pool_address: selectedAddress,
+            wallet_pubkey: connectedWallet.publicKey,
+            amount: amount,
+            is_bid: true,
+          }),
+        });
+
+        if (!buildRes.ok) {
+          throw new Error(`Backend error: ${buildRes.status}`);
+        }
+
+        let buildData;
+        try {
+          buildData = await buildRes.json();
+        } catch (parseErr) {
+          throw new Error('Invalid server response');
+        }
+
+        if (!buildData.success) {
+          const errMsg = typeof buildData.error === 'string' ? buildData.error : 'Failed to build transaction';
+          throw new Error(errMsg);
+        }
+
+        const txBase64 = buildData.data.transaction;
+        console.log('Got transaction, requesting Phantom signature...');
+
+        // Sign with Phantom
+        const provider = getProvider();
+        if (!provider) {
+          throw new Error('Phantom provider not available');
+        }
+
+        // Ensure Web3.js is loaded
+        const web3Ready = await ensureWeb3Loaded();
+        if (!web3Ready) {
+          throw new Error('Solana Web3.js failed to load');
+        }
+
+        // Access Transaction from loaded library
+        const Transaction = window.solanaWeb3?.Transaction;
+        if (!Transaction) {
+          throw new Error('Solana Web3.js not available');
+        }
+
+        // Decode base64 and reconstruct Transaction
+        const binaryString = atob(txBase64);
+        const txBuf = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          txBuf[i] = binaryString.charCodeAt(i);
+        }
+
+        // Deserialize to Transaction object
+        const tx = Transaction.from(txBuf);
+        console.log('Got transaction, requesting Phantom signature...');
+
+        // Sign with Phantom
+        const signedTx = await provider.signTransaction(tx);
+        console.log('Signed, broadcasting...');
+
+        // Serialize signed transaction to base64
+        const serialized = signedTx.serialize();
+        const binaryStr = String.fromCharCode(...Array.from(new Uint8Array(serialized)));
+        const encodedTx = btoa(binaryStr);
+
+        // Broadcast to Solana RPC
+        const rpcUrl = 'https://api.mainnet-beta.solana.com';
+        const broadcastRes = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'sendTransaction',
+            params: [encodedTx],
+          }),
+        });
+
+        let broadcastData;
+        try {
+          broadcastData = await broadcastRes.json();
+        } catch (parseErr) {
+          throw new Error('RPC response invalid');
+        }
+
+        if (broadcastData.error) {
+          let errMsg = 'Broadcast failed';
+          if (typeof broadcastData.error === 'string') {
+            errMsg = broadcastData.error;
+          } else if (broadcastData.error.message && typeof broadcastData.error.message === 'string') {
+            errMsg = broadcastData.error.message;
+          }
+          throw new Error(errMsg);
+        }
+
+        const txId = broadcastData.result;
+        console.log('Broadcast success:', txId);
+        showTxSuccess(txId);
+      } catch (err) {
+        console.error('Transaction failed:', err);
+        showTxError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        executeBtn.disabled = false;
+        txLoading.style.display = 'none';
+      }
+    }
+
+    function showTxSuccess(txId) {
+      const txResult = document.getElementById('txResult');
+      const txStatus = document.getElementById('txStatus');
+      const txHashContainer = document.getElementById('txHashContainer');
+      const txHash = document.getElementById('txHash');
+      const txSolscan = document.getElementById('txSolscan');
+
+      txResult.className = 'tx-result success';
+      txStatus.textContent = '✅ Transaction confirmed!';
+      txHash.textContent = txId;
+      txSolscan.href = `https://solscan.io/tx/${txId}`;
+      txHashContainer.style.display = 'block';
+      txResult.style.display = 'block';
+    }
+
+    function showTxError(error) {
+      const txResult = document.getElementById('txResult');
+      const txStatus = document.getElementById('txStatus');
+      const txHashContainer = document.getElementById('txHashContainer');
+
+      // Truncate very long errors to avoid overwhelming the UI
+      const maxLen = 150;
+      const displayError = typeof error === 'string' && error.length > maxLen
+        ? error.substring(0, maxLen) + '...'
+        : String(error);
+
+      txResult.className = 'tx-result error';
+      txStatus.textContent = '❌ ' + displayError;
+      txHashContainer.style.display = 'none';
+      txResult.style.display = 'block';
     }
 
     async function fetchData(page = 1) {
@@ -1327,6 +1792,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       document.getElementById('mDaily').textContent = '$' + formatNumber(m.daily);
       document.getElementById('mMonthly').textContent = '$' + formatNumber(m.monthly);
       document.getElementById('mAnnual').textContent = '$' + formatNumber(m.annual);
+
+      // Update transaction preview
+      updateTxPreview();
     }
 
     function fillCalculatorFromBtn(btn) {
@@ -1433,8 +1901,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       }
     });
 
-    // Initialize wallet on page load
+    // Initialize on page load
     checkWalletConnection();
+    updateTxWidget();
   </script>
 </body>
 </html>
