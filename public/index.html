@@ -31,6 +31,79 @@
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 30px;
+      margin-bottom: 20px;
+    }
+
+    .header-top > div:first-child {
+      flex: 1;
+    }
+
+    .wallet-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-wallet {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .btn-wallet:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-wallet:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .wallet-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f8f9fa;
+      padding: 8px 15px;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
+
+    #walletAddress {
+      font-family: 'Courier New', monospace;
+      font-size: 0.9em;
+      color: #333;
+      font-weight: 600;
+    }
+
+    .btn-disconnect {
+      background: none;
+      border: none;
+      color: #667eea;
+      font-size: 1.2em;
+      cursor: pointer;
+      padding: 0;
+      transition: color 0.2s;
+    }
+
+    .btn-disconnect:hover {
+      color: #764ba2;
+    }
+
     h1 {
       color: #333;
       margin-bottom: 10px;
@@ -576,8 +649,19 @@
   <div id="global-tooltip"></div>
   <div class="container">
     <header>
-      <h1>🌊 DLMM Pool Data Viewer</h1>
-      <p class="subtitle">Real-time pool data from Meteora DLMM API</p>
+      <div class="header-top">
+        <div>
+          <h1>🌊 DLMM Pool Data Viewer</h1>
+          <p class="subtitle">Real-time pool data from Meteora DLMM API</p>
+        </div>
+        <div class="wallet-section">
+          <button id="walletBtn" class="btn-wallet" onclick="handleWalletClick()">Connect Wallet</button>
+          <div id="walletInfo" class="wallet-info" style="display: none;">
+            <span id="walletAddress"></span>
+            <button id="disconnectBtn" class="btn-disconnect" onclick="handleDisconnect()">✕</button>
+          </div>
+        </div>
+      </div>
 
       <div class="controls">
         <div class="search-group">
@@ -782,6 +866,80 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
     let currentPage = 1;
     let totalPages = 1;
     const poolsCache = {}; // address → pool object
+    let connectedWallet = null; // { publicKey: string }
+
+    // Phantom wallet integration
+    function getProvider() {
+      if ('solana' in window) {
+        const provider = window.solana;
+        if (provider.isPhantom) return provider;
+      }
+      return null;
+    }
+
+    async function handleWalletClick() {
+      const provider = getProvider();
+      if (!provider) {
+        alert('Phantom wallet not detected. Please install it from https://phantom.app');
+        return;
+      }
+
+      try {
+        const response = await provider.connect();
+        connectedWallet = { publicKey: response.publicKey.toString() };
+        updateWalletUI();
+      } catch (err) {
+        console.error('Failed to connect wallet:', err);
+        if (err.code !== 4001) { // Not user rejection
+          alert('Failed to connect wallet: ' + err.message);
+        }
+      }
+    }
+
+    function handleDisconnect() {
+      const provider = getProvider();
+      if (provider) {
+        provider.disconnect().catch(err => console.error('Disconnect error:', err));
+      }
+      connectedWallet = null;
+      updateWalletUI();
+    }
+
+    function truncateAddress(address) {
+      return address.slice(0, 4) + '...' + address.slice(-4);
+    }
+
+    function updateWalletUI() {
+      const walletBtn = document.getElementById('walletBtn');
+      const walletInfo = document.getElementById('walletInfo');
+      const walletAddress = document.getElementById('walletAddress');
+
+      if (connectedWallet) {
+        walletBtn.style.display = 'none';
+        walletInfo.style.display = 'flex';
+        walletAddress.textContent = truncateAddress(connectedWallet.publicKey);
+      } else {
+        walletBtn.style.display = 'block';
+        walletInfo.style.display = 'none';
+      }
+    }
+
+    // Listen for wallet disconnect
+    if (typeof window !== 'undefined' && window.solana) {
+      window.solana.on('disconnect', () => {
+        connectedWallet = null;
+        updateWalletUI();
+      });
+    }
+
+    // Check if already connected on page load
+    async function checkWalletConnection() {
+      const provider = getProvider();
+      if (provider && provider._publicKey) {
+        connectedWallet = { publicKey: provider._publicKey.toString() };
+        updateWalletUI();
+      }
+    }
 
     async function fetchData(page = 1) {
       currentPage = page;
@@ -1241,6 +1399,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         globalTooltip.style.display = 'none';
       }
     });
+
+    // Initialize wallet on page load
+    checkWalletConnection();
   </script>
 </body>
 </html>
