@@ -476,6 +476,169 @@
       line-height: 1.4;
     }
 
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      color: #333;
+      font-size: 1.4em;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.8em;
+      color: #999;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: #333;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .confirm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .confirm-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .confirm-item label {
+      font-size: 0.8em;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .confirm-value {
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      font-weight: 600;
+      color: #333;
+      font-size: 0.95em;
+      word-break: break-word;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 12px;
+      padding: 24px;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .modal-footer button {
+      flex: 1;
+      padding: 12px;
+      font-size: 0.95em;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-secondary {
+      background: #e9ecef;
+      color: #495057;
+    }
+
+    .btn-secondary:hover {
+      background: #dee2e6;
+    }
+
+    .strategy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .strategy-btn {
+      padding: 16px;
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .strategy-btn:hover {
+      border-color: #667eea;
+      background: #f0f2ff;
+    }
+
+    .strategy-btn.selected {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .strategy-name {
+      font-size: 0.95em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .strategy-score {
+      font-size: 1.1em;
+      font-weight: 700;
+    }
+
     .tx-preview {
       background: white;
       border: 1px solid #e9ecef;
@@ -1082,6 +1245,76 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
             </div>
           </div>
         </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirmModal" style="display:none" class="modal-overlay">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Confirm Position</h3>
+              <button class="modal-close" onclick="cancelTransaction()">&times;</button>
+            </div>
+
+            <div class="modal-body">
+              <div class="confirm-grid">
+                <div class="confirm-item">
+                  <label>Trading Pair</label>
+                  <div class="confirm-value" id="confirmPair">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>Amount (SOL)</label>
+                  <div class="confirm-value" id="confirmAmount">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>Bin Step</label>
+                  <div class="confirm-value" id="confirmBinStep">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>Est. APR</label>
+                  <div class="confirm-value" id="confirmApr">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>Pool Score</label>
+                  <div class="confirm-value" id="confirmScore">–</div>
+                </div>
+              </div>
+
+              <!-- Strategy Selection -->
+              <div style="margin-top: 24px;">
+                <label style="font-weight: 600; color: #333; display: block; margin-bottom: 12px;">Select Strategy</label>
+                <div class="strategy-grid">
+                  <button class="strategy-btn" onclick="selectStrategy('bidask')" id="strategyBidask">
+                    <div class="strategy-name">Bid-Ask Spread</div>
+                    <div class="strategy-score" id="scoreBidask">–</div>
+                  </button>
+                  <button class="strategy-btn" onclick="selectStrategy('bid')" id="strategyBidOnly">
+                    <div class="strategy-name">One-Sided Bid</div>
+                    <div class="strategy-score" id="scoreBid">–</div>
+                  </button>
+                  <button class="strategy-btn" onclick="selectStrategy('ask')" id="strategyAskOnly">
+                    <div class="strategy-name">One-Sided Ask</div>
+                    <div class="strategy-score" id="scoreAsk">–</div>
+                  </button>
+                  <button class="strategy-btn" onclick="selectStrategy('spot')" id="strategySpot">
+                    <div class="strategy-name">Concentrated Spot</div>
+                    <div class="strategy-score" id="scoreSpot">–</div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- AI Recommendation -->
+              <div id="aiRecommendation" style="display:none; margin-top:20px; padding:16px; background:#f0f2ff; border-radius:8px; border-left:4px solid #667eea;">
+                <div style="font-weight:600; color:#333; margin-bottom:8px;">🤖 AI Recommends:</div>
+                <div id="aiRecommendText" style="color:#555; font-size:0.95em;"></div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-secondary" onclick="cancelTransaction()">Cancel</button>
+              <button class="btn-secondary" onclick="askAI()" style="background:#667eea; color:white;">Ask IA</button>
+              <button class="btn-primary" onclick="confirmTransaction()">Confirm & Sign</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1265,6 +1498,10 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       document.getElementById('previewScore').textContent = Math.max(0, Math.min(100, score)).toFixed(0) + '/100';
     }
 
+    // Store pending tx data for modal confirmation
+    let pendingTxData = null;
+    let selectedStrategy = 'bidask'; // Default strategy (Bid-Ask Spread)
+
     async function executeTransaction() {
       if (!connectedWallet) {
         showTxError('Connect wallet first');
@@ -1289,10 +1526,179 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         return;
       }
 
+      const pool = poolsCache[selectedAddress];
+      if (!pool) {
+        showTxError('Pool data not found');
+        return;
+      }
+
+      // Calculate score and strategy
+      const vtvScore = Math.min((volume / tvl) * 100, 100);
+      const apr = (fees / tvl) * 365 * 100;
+      const aprScore = Math.min((apr / 300) * 100, 100);
+      const feeRate = fees / tvl;
+      const feeScore = Math.min((feeRate / 0.5) * 100, 100);
+      const score = vtvScore * 0.50 + aprScore * 0.35 + feeScore * 0.15;
+
+      // Determine AI strategy based on score
+      let strategy = 'Conservative';
+      if (score >= 70) {
+        strategy = 'Aggressive';
+      } else if (score >= 40) {
+        strategy = 'Balanced';
+      }
+
+      // Store tx data and show modal
+      pendingTxData = {
+        selectedAddress,
+        pool,
+        amount,
+        tvl,
+        volume,
+        fees,
+        apr: apr.toFixed(2),
+        score: score.toFixed(1),
+        strategy,
+        binStep: pool.binStep,
+      };
+
+      showConfirmationModal(pendingTxData);
+    }
+
+    function showConfirmationModal(txData) {
+      // Populate modal with tx data
+      document.getElementById('confirmPair').textContent = txData.pool.pair;
+      document.getElementById('confirmAmount').textContent = txData.amount.toFixed(4) + ' SOL';
+      document.getElementById('confirmBinStep').textContent = txData.binStep + ' bp';
+      document.getElementById('confirmApr').textContent = txData.apr + '%';
+      document.getElementById('confirmScore').textContent = txData.score + '/100';
+
+      // Calculate scores for each DLMM strategy (Meteora)
+      const baseScore = parseFloat(txData.score);
+      const scores = {
+        bidask: Math.min(100, (baseScore * 1.1).toFixed(1)),    // Bid-Ask Spread: best for liquidity capture
+        bid: Math.min(100, (baseScore * 0.9).toFixed(1)),       // One-Sided Bid: directional, less capital
+        ask: Math.min(100, (baseScore * 0.85).toFixed(1)),      // One-Sided Ask: directional downside
+        spot: Math.min(100, (baseScore * 0.95).toFixed(1))      // Concentrated Spot: capital efficient
+      };
+
+      // Display scores for each strategy
+      document.getElementById('scoreBidask').textContent = scores.bidask + '/100';
+      document.getElementById('scoreBid').textContent = scores.bid + '/100';
+      document.getElementById('scoreAsk').textContent = scores.ask + '/100';
+      document.getElementById('scoreSpot').textContent = scores.spot + '/100';
+
+      // Reset strategy selection to bid-ask (default)
+      selectedStrategy = 'bidask';
+      updateStrategyButtons();
+
+      // Show modal, hide results
+      document.getElementById('confirmModal').style.display = 'flex';
+      document.getElementById('txResult').style.display = 'none';
+    }
+
+    function selectStrategy(strategy) {
+      selectedStrategy = strategy;
+      updateStrategyButtons();
+    }
+
+    function updateStrategyButtons() {
+      const strategies = ['bidask', 'bid', 'ask', 'spot'];
+      const buttonIds = ['Bidask', 'BidOnly', 'AskOnly', 'Spot'];
+      strategies.forEach((s, i) => {
+        const btn = document.getElementById(`strategy${buttonIds[i]}`);
+        if (btn) {
+          if (s === selectedStrategy) {
+            btn.classList.add('selected');
+          } else {
+            btn.classList.remove('selected');
+          }
+        }
+      });
+    }
+
+    async function askAI() {
+      if (!pendingTxData) {
+        showTxError('No pending transaction');
+        return;
+      }
+
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Analyzing...';
+
+      try {
+        const pool = pendingTxData.pool;
+        const res = await fetch('/api/strategy-recommend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pool: {
+              pair: pool.pair,
+              address: pool.address,
+              tvl: pool.tvl,
+              volume24h: pool.volume24h,
+              fees24h: pool.fees24h,
+              poolAge: pool.poolAge,
+              binStep: pool.binStep,
+              feeTvlRatioPercent: pool.feeTvlRatioPercent,
+              volumeTvlRatio: pool.volumeTvlRatio,
+            },
+            amount: pendingTxData.amount,
+            score: parseFloat(pendingTxData.score),
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`Server error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || 'Failed to get recommendation');
+        }
+
+        // Display recommendation
+        const rec = data.data;
+        const recDiv = document.getElementById('aiRecommendation');
+        const recText = document.getElementById('aiRecommendText');
+
+        recText.innerHTML = `<strong>${rec.strategy}</strong> — ${rec.reasoning}`;
+        recDiv.style.display = 'block';
+
+        // Auto-select recommended strategy
+        selectedStrategy = rec.strategy.toLowerCase().replace('-', '').replace(' ', '');
+        if (rec.strategy.includes('Bid-Ask')) selectedStrategy = 'bidask';
+        else if (rec.strategy.includes('One-Sided Bid')) selectedStrategy = 'bid';
+        else if (rec.strategy.includes('One-Sided Ask')) selectedStrategy = 'ask';
+        else if (rec.strategy.includes('Concentrated')) selectedStrategy = 'spot';
+
+        updateStrategyButtons();
+      } catch (err) {
+        console.error('AI recommendation failed:', err);
+        showTxError('Failed to get AI recommendation: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Ask IA';
+      }
+    }
+
+    async function confirmTransaction() {
+      if (!pendingTxData) {
+        showTxError('No pending transaction');
+        return;
+      }
+
+      // Update pending tx with selected strategy
+      pendingTxData.strategy = selectedStrategy;
+
+      const { selectedAddress, amount } = pendingTxData;
+
       const executeBtn = document.getElementById('executeBtn');
       const txLoading = document.getElementById('txLoading');
       executeBtn.disabled = true;
       txLoading.style.display = 'block';
+      document.getElementById('confirmModal').style.display = 'none';
 
       try {
         console.log('Building transaction...', selectedAddress, amount);
@@ -1405,6 +1811,14 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         executeBtn.disabled = false;
         txLoading.style.display = 'none';
       }
+    }
+
+    function cancelTransaction() {
+      // Clear pending tx and hide modal
+      pendingTxData = null;
+      document.getElementById('confirmModal').style.display = 'none';
+      document.getElementById('txResult').style.display = 'none';
+      // No side effects - user can retry or modify inputs
     }
 
     function showTxSuccess(txId) {
