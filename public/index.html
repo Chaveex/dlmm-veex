@@ -1282,21 +1282,21 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
               <div style="margin-top: 24px;">
                 <label style="font-weight: 600; color: #333; display: block; margin-bottom: 12px;">Select Strategy</label>
                 <div class="strategy-grid">
-                  <button class="strategy-btn" onclick="selectStrategy('bid')" id="strategyBid">
-                    <div class="strategy-name">Bid</div>
+                  <button class="strategy-btn" onclick="selectStrategy('bidask')" id="strategyBidask">
+                    <div class="strategy-name">Bid-Ask Spread</div>
+                    <div class="strategy-score" id="scoreBidask">–</div>
+                  </button>
+                  <button class="strategy-btn" onclick="selectStrategy('bid')" id="strategyBidOnly">
+                    <div class="strategy-name">One-Sided Bid</div>
                     <div class="strategy-score" id="scoreBid">–</div>
                   </button>
-                  <button class="strategy-btn" onclick="selectStrategy('ask')" id="strategyAsk">
-                    <div class="strategy-name">Ask</div>
+                  <button class="strategy-btn" onclick="selectStrategy('ask')" id="strategyAskOnly">
+                    <div class="strategy-name">One-Sided Ask</div>
                     <div class="strategy-score" id="scoreAsk">–</div>
                   </button>
                   <button class="strategy-btn" onclick="selectStrategy('spot')" id="strategySpot">
-                    <div class="strategy-name">Spot</div>
+                    <div class="strategy-name">Concentrated Spot</div>
                     <div class="strategy-score" id="scoreSpot">–</div>
-                  </button>
-                  <button class="strategy-btn" onclick="selectStrategy('curve')" id="strategyCurve">
-                    <div class="strategy-name">Curve</div>
-                    <div class="strategy-score" id="scoreCurve">–</div>
                   </button>
                 </div>
               </div>
@@ -1493,7 +1493,7 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
 
     // Store pending tx data for modal confirmation
     let pendingTxData = null;
-    let selectedStrategy = 'bid'; // Default strategy
+    let selectedStrategy = 'bidask'; // Default strategy (Bid-Ask Spread)
 
     async function executeTransaction() {
       if (!connectedWallet) {
@@ -1566,23 +1566,23 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       document.getElementById('confirmApr').textContent = txData.apr + '%';
       document.getElementById('confirmScore').textContent = txData.score + '/100';
 
-      // Calculate scores for each strategy (slight variations based on pool characteristics)
+      // Calculate scores for each DLMM strategy (Meteora)
       const baseScore = parseFloat(txData.score);
       const scores = {
-        bid: (baseScore * 0.95).toFixed(1),   // Bid slightly lower
-        ask: (baseScore * 0.95).toFixed(1),   // Ask slightly lower
-        spot: (baseScore * 1.0).toFixed(1),   // Spot neutral
-        curve: (baseScore * 1.05).toFixed(1)  // Curve slightly higher
+        bidask: Math.min(100, (baseScore * 1.1).toFixed(1)),    // Bid-Ask Spread: best for liquidity capture
+        bid: Math.min(100, (baseScore * 0.9).toFixed(1)),       // One-Sided Bid: directional, less capital
+        ask: Math.min(100, (baseScore * 0.85).toFixed(1)),      // One-Sided Ask: directional downside
+        spot: Math.min(100, (baseScore * 0.95).toFixed(1))      // Concentrated Spot: capital efficient
       };
 
       // Display scores for each strategy
-      document.getElementById('scoreBid').textContent = scores.bid;
-      document.getElementById('scoreAsk').textContent = scores.ask;
-      document.getElementById('scoreSpot').textContent = scores.spot;
-      document.getElementById('scoreCurve').textContent = scores.curve;
+      document.getElementById('scoreBidask').textContent = scores.bidask + '/100';
+      document.getElementById('scoreBid').textContent = scores.bid + '/100';
+      document.getElementById('scoreAsk').textContent = scores.ask + '/100';
+      document.getElementById('scoreSpot').textContent = scores.spot + '/100';
 
-      // Reset strategy selection to bid
-      selectedStrategy = 'bid';
+      // Reset strategy selection to bid-ask (default)
+      selectedStrategy = 'bidask';
       updateStrategyButtons();
 
       // Show modal, hide results
@@ -1596,12 +1596,16 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
     }
 
     function updateStrategyButtons() {
-      ['bid', 'ask', 'spot', 'curve'].forEach(s => {
-        const btn = document.getElementById(`strategy${s.charAt(0).toUpperCase() + s.slice(1)}`);
-        if (s === selectedStrategy) {
-          btn.classList.add('selected');
-        } else {
-          btn.classList.remove('selected');
+      const strategies = ['bidask', 'bid', 'ask', 'spot'];
+      const buttonIds = ['Bidask', 'BidOnly', 'AskOnly', 'Spot'];
+      strategies.forEach((s, i) => {
+        const btn = document.getElementById(`strategy${buttonIds[i]}`);
+        if (btn) {
+          if (s === selectedStrategy) {
+            btn.classList.add('selected');
+          } else {
+            btn.classList.remove('selected');
+          }
         }
       });
     }
