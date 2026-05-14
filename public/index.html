@@ -476,6 +476,125 @@
       line-height: 1.4;
     }
 
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      color: #333;
+      font-size: 1.4em;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.8em;
+      color: #999;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: #333;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .confirm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .confirm-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .confirm-item label {
+      font-size: 0.8em;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .confirm-value {
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      font-weight: 600;
+      color: #333;
+      font-size: 0.95em;
+      word-break: break-word;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 12px;
+      padding: 24px;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .modal-footer button {
+      flex: 1;
+      padding: 12px;
+      font-size: 0.95em;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-secondary {
+      background: #e9ecef;
+      color: #495057;
+    }
+
+    .btn-secondary:hover {
+      background: #dee2e6;
+    }
+
     .tx-preview {
       background: white;
       border: 1px solid #e9ecef;
@@ -1082,6 +1201,50 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
             </div>
           </div>
         </div>
+
+        <!-- Confirmation Modal -->
+        <div id="confirmModal" style="display:none" class="modal-overlay">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Confirm Position</h3>
+              <button class="modal-close" onclick="cancelTransaction()">&times;</button>
+            </div>
+
+            <div class="modal-body">
+              <div class="confirm-grid">
+                <div class="confirm-item">
+                  <label>Trading Pair</label>
+                  <div class="confirm-value" id="confirmPair">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>Amount (SOL)</label>
+                  <div class="confirm-value" id="confirmAmount">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>Bin Step</label>
+                  <div class="confirm-value" id="confirmBinStep">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>Est. APR</label>
+                  <div class="confirm-value" id="confirmApr">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>Pool Score</label>
+                  <div class="confirm-value" id="confirmScore">–</div>
+                </div>
+                <div class="confirm-item">
+                  <label>AI Strategy</label>
+                  <div class="confirm-value" id="confirmStrategy">–</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn-secondary" onclick="cancelTransaction()">Cancel</button>
+              <button class="btn-primary" onclick="confirmTransaction()">Confirm & Sign</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1265,6 +1428,9 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
       document.getElementById('previewScore').textContent = Math.max(0, Math.min(100, score)).toFixed(0) + '/100';
     }
 
+    // Store pending tx data for modal confirmation
+    let pendingTxData = null;
+
     async function executeTransaction() {
       if (!connectedWallet) {
         showTxError('Connect wallet first');
@@ -1289,10 +1455,72 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         return;
       }
 
+      const pool = poolsCache[selectedAddress];
+      if (!pool) {
+        showTxError('Pool data not found');
+        return;
+      }
+
+      // Calculate score and strategy
+      const vtvScore = Math.min((volume / tvl) * 100, 100);
+      const apr = (fees / tvl) * 365 * 100;
+      const aprScore = Math.min((apr / 300) * 100, 100);
+      const feeRate = fees / tvl;
+      const feeScore = Math.min((feeRate / 0.5) * 100, 100);
+      const score = vtvScore * 0.50 + aprScore * 0.35 + feeScore * 0.15;
+
+      // Determine AI strategy based on score
+      let strategy = 'Conservative';
+      if (score >= 70) {
+        strategy = 'Aggressive';
+      } else if (score >= 40) {
+        strategy = 'Balanced';
+      }
+
+      // Store tx data and show modal
+      pendingTxData = {
+        selectedAddress,
+        pool,
+        amount,
+        tvl,
+        volume,
+        fees,
+        apr: apr.toFixed(2),
+        score: score.toFixed(1),
+        strategy,
+        binStep: pool.binStep,
+      };
+
+      showConfirmationModal(pendingTxData);
+    }
+
+    function showConfirmationModal(txData) {
+      // Populate modal with tx data
+      document.getElementById('confirmPair').textContent = txData.pool.pair;
+      document.getElementById('confirmAmount').textContent = txData.amount.toFixed(4) + ' SOL';
+      document.getElementById('confirmBinStep').textContent = txData.binStep + ' bp';
+      document.getElementById('confirmApr').textContent = txData.apr + '%';
+      document.getElementById('confirmScore').textContent = txData.score + '/100';
+      document.getElementById('confirmStrategy').textContent = txData.strategy;
+
+      // Show modal, hide results
+      document.getElementById('confirmModal').style.display = 'flex';
+      document.getElementById('txResult').style.display = 'none';
+    }
+
+    async function confirmTransaction() {
+      if (!pendingTxData) {
+        showTxError('No pending transaction');
+        return;
+      }
+
+      const { selectedAddress, amount } = pendingTxData;
+
       const executeBtn = document.getElementById('executeBtn');
       const txLoading = document.getElementById('txLoading');
       executeBtn.disabled = true;
       txLoading.style.display = 'block';
+      document.getElementById('confirmModal').style.display = 'none';
 
       try {
         console.log('Building transaction...', selectedAddress, amount);
@@ -1405,6 +1633,14 @@ Verdicts: ≥ 70 → Excellent · 40–69 → Decent · &lt; 40 → Low yield</p
         executeBtn.disabled = false;
         txLoading.style.display = 'none';
       }
+    }
+
+    function cancelTransaction() {
+      // Clear pending tx and hide modal
+      pendingTxData = null;
+      document.getElementById('confirmModal').style.display = 'none';
+      document.getElementById('txResult').style.display = 'none';
+      // No side effects - user can retry or modify inputs
     }
 
     function showTxSuccess(txId) {
