@@ -210,6 +210,11 @@ export class AutonomousBot {
     console.log(`[Bot] Monitoring ${this.openPositions.length} position(s)`);
 
     for (const pos of this.openPositions) {
+      if (this.config.dryRun) {
+        console.log(`[Bot] [DRY RUN] Position ${pos.pair}: Simulated (${pos.capitalDeployed} SOL, status: ${pos.status})`);
+        continue;
+      }
+
       try {
         const tx = await connection.getTransaction(pos.signature);
         if (!tx) {
