@@ -163,8 +163,29 @@ What happens:
 
 Logs show `[DRY RUN]` prefix to distinguish from real trades.
 
+### Target Pair Filtering
+
+Test specific pool only:
+
+```bash
+BOT_TARGET_PAIR='WORLDCUP-SOL' BOT_DRY_RUN=true npm run bot
+```
+
+- Filter to single pair (case-insensitive substring match)
+- Useful for strategy validation before full deployment
+- Format: use actual pool names (e.g., "WORLDCUP-SOL", "SOL-USDC")
+- Config shows "(FILTERED)" when active
+
+Example test run:
+```
+[Bot] Target pair: WORLDCUP-SOL (FILTERED)
+[Bot] Tick: fetched 50 pools, 1 candidates
+[Bot] [DRY RUN] Opening position: WORLDCUP-SOL (score threshold met)
+[Bot] [DRY RUN] Position opened: WORLDCUP-SOL | Capital: 1 SOL
+```
+
 Use for:
-- Testing scoring algorithm
+- Testing scoring algorithm on specific pairs
 - Validating strategy thresholds
 - Demo without SOL
 - CI/CD testing
