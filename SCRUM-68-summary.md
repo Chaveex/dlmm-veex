@@ -82,6 +82,7 @@ npm run bot:gen-keypair > bot-keypair.json
 ```bash
 # CLI will show: [Bot] Wallet: 7kQ5...
 # Send SOL to that address
+# Or use devnet airdrop: export DEVNET_MODE=true
 ```
 
 3. **Create config** (copy + customize):
@@ -92,7 +93,14 @@ cp .env.bot.example .env.bot
 
 ### Run Bot
 
-**Dev mode (hot reload)**:
+**Test mode (no real transactions)**:
+```bash
+export BOT_DRY_RUN=true
+npm run bot
+# Simulates all trades, broadcasts nothing, 0 cost
+```
+
+**Dev mode (hot reload, real transactions)**:
 ```bash
 npm run bot
 ```
@@ -136,6 +144,30 @@ Graceful shutdown: `Ctrl+C` shows final status.
 ✓ Build TypeScript: passes  
 ✓ Jest tests (109): no regression  
 ✓ Type safety: AutonomousBot fully typed  
+
+## DRY_RUN Mode (Testing)
+
+**Simulation without transactions** (zero SOL cost):
+
+```bash
+BOT_DRY_RUN=true npm run bot
+```
+
+What happens:
+- ✓ Fetch pools from Meteora API (real data)
+- ✓ Filter by minScore (real scoring)
+- ✓ Calculate capital needed (real math)
+- ✓ Simulate transaction construction (no sign)
+- ✗ No RPC broadcasts (fake signatures: `sim_...`)
+- ✗ Positions marked as 'pending' (not confirmed)
+
+Logs show `[DRY RUN]` prefix to distinguish from real trades.
+
+Use for:
+- Testing scoring algorithm
+- Validating strategy thresholds
+- Demo without SOL
+- CI/CD testing
 
 ## Known Limitations / TODO
 
