@@ -15,6 +15,7 @@ function loadConfig(): BotConfig {
     maxSimultaneousPositions: 3,
     updateIntervalMs: 60000,
     keypairPath: path.join(process.cwd(), 'bot-keypair.json'),
+    dryRun: false,
   };
 
   // Override with env vars
@@ -23,6 +24,7 @@ function loadConfig(): BotConfig {
   if (process.env.BOT_MAX_POSITIONS) config.maxSimultaneousPositions = parseInt(process.env.BOT_MAX_POSITIONS);
   if (process.env.BOT_UPDATE_INTERVAL) config.updateIntervalMs = parseInt(process.env.BOT_UPDATE_INTERVAL);
   if (process.env.BOT_KEYPAIR_PATH) config.keypairPath = process.env.BOT_KEYPAIR_PATH;
+  if (process.env.BOT_DRY_RUN === 'true') config.dryRun = true;
 
   return config as BotConfig;
 }

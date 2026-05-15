@@ -21,6 +21,7 @@ export class AutonomousBot {
     console.log(`  - Min score: ${config.minScore}`);
     console.log(`  - Max capital per position: ${config.maxCapitalPerPosition} SOL`);
     console.log(`  - Max simultaneous positions: ${config.maxSimultaneousPositions}`);
+    console.log(`  - Dry run: ${config.dryRun ? 'YES (simulation mode)' : 'NO (real transactions)'}`);
     console.log(`  - Wallet: ${keypair.publicKey.toString()}`);
   }
 
@@ -124,7 +125,8 @@ export class AutonomousBot {
 
   private async openPosition(pool: PoolData): Promise<void> {
     try {
-      console.log(`[Bot] Opening position: ${pool.pair} (score threshold met)`);
+      const modeLabel = this.config.dryRun ? '[DRY RUN]' : '';
+      console.log(`[Bot] ${modeLabel} Opening position: ${pool.pair} (score threshold met)`);
 
       // Build transaction (placeholder)
       const tx = new Transaction({
@@ -141,10 +143,21 @@ export class AutonomousBot {
         data: Buffer.from([0]), // Placeholder
       });
 
-      // Sign and send
-      tx.sign(this.keypair);
-      const signature = await connection.sendRawTransaction(tx.serialize());
-      await connection.confirmTransaction(signature);
+      let signature: string;
+
+      if (this.config.dryRun) {
+        // Dry run: simulate transaction
+        tx.sign(this.keypair);
+        const serialized = tx.serialize();
+        signature = `sim_${Buffer.from(serialized).toString('hex').slice(0, 40)}`;
+        console.log(`[Bot] ${modeLabel} Simulated tx would be: ${signature.slice(0, 20)}...`);
+      } else {
+        // Real mode: sign and send
+        tx.sign(this.keypair);
+        signature = await connection.sendRawTransaction(tx.serialize());
+        await connection.confirmTransaction(signature);
+        console.log(`[Bot] Position confirmed: Tx: ${signature}`);
+      }
 
       const position: BotPosition = {
         poolAddress: pool.address,
@@ -152,11 +165,11 @@ export class AutonomousBot {
         capitalDeployed: this.config.maxCapitalPerPosition,
         signature,
         timestamp: Date.now(),
-        status: 'open',
+        status: this.config.dryRun ? 'pending' : 'open',
       };
 
       this.openPositions.push(position);
-      console.log(`[Bot] Position opened: ${pool.pair} | Tx: ${signature}`);
+      console.log(`[Bot] ${modeLabel} Position opened: ${pool.pair} | Capital: ${this.config.maxCapitalPerPosition} SOL`);
     } catch (err) {
       console.error(`[Bot] Failed to open position: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }

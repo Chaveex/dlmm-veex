@@ -56,6 +56,7 @@ export interface BotConfig {
   maxSimultaneousPositions: number;
   updateIntervalMs: number; // How often to check pools (default 60000ms = 1min)
   keypairPath: string; // Path to keypair JSON file
+  dryRun?: boolean; // Simulate transactions without broadcasting (default false)
 }
 
 export interface BotPosition {
