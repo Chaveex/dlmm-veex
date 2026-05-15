@@ -26,6 +26,7 @@ function loadConfig(): BotConfig {
   if (process.env.BOT_KEYPAIR_PATH) config.keypairPath = process.env.BOT_KEYPAIR_PATH;
   if (process.env.BOT_DRY_RUN === 'true') config.dryRun = true;
   if (process.env.BOT_TARGET_PAIR) config.targetPair = process.env.BOT_TARGET_PAIR;
+  if (process.env.BOT_TARGET_POOL_ADDRESS) config.targetPoolAddress = process.env.BOT_TARGET_POOL_ADDRESS;
 
   return config as BotConfig;
 }

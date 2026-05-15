@@ -57,7 +57,8 @@ export interface BotConfig {
   updateIntervalMs: number; // How often to check pools (default 60000ms = 1min)
   keypairPath: string; // Path to keypair JSON file
   dryRun?: boolean; // Simulate transactions without broadcasting (default false)
-  targetPair?: string; // Filter for specific pair (e.g., "SOL/WORLDCUP") - if set, only this pair is considered
+  targetPair?: string; // Filter for specific pair (e.g., "WORLDCUP-SOL") - if set, only this pair is considered
+  targetPoolAddress?: string; // Use specific pool address directly (skip name search)
 }
 
 export interface BotPosition {

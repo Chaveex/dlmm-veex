@@ -22,7 +22,8 @@ export class AutonomousBot {
     console.log(`  - Max capital per position: ${config.maxCapitalPerPosition} SOL`);
     console.log(`  - Max simultaneous positions: ${config.maxSimultaneousPositions}`);
     console.log(`  - Dry run: ${config.dryRun ? 'YES (simulation mode)' : 'NO (real transactions)'}`);
-    if (config.targetPair) console.log(`  - Target pair: ${config.targetPair} (FILTERED)`);
+    if (config.targetPoolAddress) console.log(`  - Target pool address: ${config.targetPoolAddress} (DIRECT)`);
+    else if (config.targetPair) console.log(`  - Target pair: ${config.targetPair} (FILTERED)`);
     console.log(`  - Wallet: ${keypair.publicKey.toString()}`);
   }
 
@@ -38,10 +39,26 @@ export class AutonomousBot {
 
   private async tick(): Promise<void> {
     try {
-      const pools = await this.fetchPools();
-      const candidates = this.filterCandidates(pools);
+      let candidates: PoolData[] = [];
 
-      console.log(`[Bot] Tick: fetched ${pools.length} pools, ${candidates.length} candidates`);
+      if (this.config.targetPoolAddress) {
+        // Direct pool address mode: fetch and filter to this address only
+        const pools = await this.fetchPools();
+        const targetPool = pools.find((p) => p.address.toLowerCase() === this.config.targetPoolAddress!.toLowerCase());
+
+        if (targetPool) {
+          candidates = [targetPool];
+          console.log(`[Bot] Tick: fetched ${pools.length} pools, found target pool: ${targetPool.pair}`);
+        } else {
+          console.log(`[Bot] Tick: fetched ${pools.length} pools, target address not found`);
+          return;
+        }
+      } else {
+        // Normal mode: fetch all and filter by pair/score
+        const pools = await this.fetchPools();
+        candidates = this.filterCandidates(pools);
+        console.log(`[Bot] Tick: fetched ${pools.length} pools, ${candidates.length} candidates`);
+      }
 
       // Open positions if we have room
       const availableSlots = this.config.maxSimultaneousPositions - this.openPositions.length;
