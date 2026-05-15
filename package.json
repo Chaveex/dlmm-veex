@@ -7,6 +7,9 @@
     "build": "tsc",
     "dev": "ts-node src/server.ts",
     "start": "node dist/server.js",
+    "bot": "ts-node src/bot-cli.ts",
+    "bot:build": "npm run build && node dist/bot-cli.js",
+    "bot:gen-keypair": "ts-node -e \"import {Keypair} from '@solana/web3.js'; const k = Keypair.generate(); console.log(JSON.stringify(Array.from(k.secretKey))); console.log('Public key:', k.publicKey.toString());\"",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint src --ext .ts"

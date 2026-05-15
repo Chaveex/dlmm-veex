@@ -49,3 +49,20 @@ export interface PoolSecurityResult {
   tokenY: TokenSecurityResult;
   error?: string;
 }
+
+export interface BotConfig {
+  minScore: number; // Minimum score (0-100) to open position
+  maxCapitalPerPosition: number; // SOL
+  maxSimultaneousPositions: number;
+  updateIntervalMs: number; // How often to check pools (default 60000ms = 1min)
+  keypairPath: string; // Path to keypair JSON file
+}
+
+export interface BotPosition {
+  poolAddress: string;
+  pair: string;
+  capitalDeployed: number; // SOL
+  signature: string; // Transaction signature when opened
+  timestamp: number; // Unix timestamp
+  status: 'open' | 'closed' | 'pending';
+}
