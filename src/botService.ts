@@ -1,7 +1,9 @@
+import Anthropic from '@anthropic-ai/sdk';
 import axios from 'axios';
 import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { BotConfig, BotPosition, PoolData } from './types';
 import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
+import { analyzePool, PoolAnalysisResult } from './poolAnalysis';
 
 const API_URL = 'https://dlmm.datapi.meteora.ag/pools';
 const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -12,10 +14,12 @@ export class AutonomousBot {
   private config: BotConfig;
   private keypair: Keypair;
   private openPositions: BotPosition[] = [];
+  private anthropic: Anthropic;
 
   constructor(config: BotConfig, keypair: Keypair) {
     this.config = config;
     this.keypair = keypair;
+    this.anthropic = new Anthropic();
 
     console.log(`[Bot] Initialized with config:`);
     console.log(`  - Min score: ${config.minScore}`);
@@ -29,11 +33,7 @@ export class AutonomousBot {
 
   async start(): Promise<void> {
     console.log(`[Bot] Starting autonomous trading bot...`);
-
-    // Initial fetch
     await this.tick();
-
-    // Periodic updates
     setInterval(() => this.tick(), this.config.updateIntervalMs);
   }
 
@@ -42,7 +42,6 @@ export class AutonomousBot {
       let candidates: PoolData[] = [];
 
       if (this.config.targetPoolAddress) {
-        // Direct pool address mode: fetch and filter to this address only
         const pools = await this.fetchPools();
         const targetPool = pools.find((p) => p.address.toLowerCase() === this.config.targetPoolAddress!.toLowerCase());
 
@@ -54,22 +53,73 @@ export class AutonomousBot {
           return;
         }
       } else {
-        // Normal mode: fetch all and filter by pair/score
         const pools = await this.fetchPools();
         candidates = this.filterCandidates(pools);
         console.log(`[Bot] Tick: fetched ${pools.length} pools, ${candidates.length} candidates`);
       }
 
-      // Open positions if we have room
-      const availableSlots = this.config.maxSimultaneousPositions - this.openPositions.length;
-      for (let i = 0; i < Math.min(availableSlots, candidates.length); i++) {
-        await this.openPosition(candidates[i]);
+      // Deduplicate: skip pools already having an open position
+      const newCandidates = candidates.filter(
+        (pool) => !this.openPositions.some((pos) => pos.poolAddress === pool.address && pos.status !== 'closed')
+      );
+
+      const skipped = candidates.length - newCandidates.length;
+      if (skipped > 0) {
+        console.log(`[Bot] Skipping ${skipped} already-open pool(s)`);
       }
 
-      // Monitor existing positions
+      // Capital guard: check available slots before any analysis
+      const availableSlots = this.config.maxSimultaneousPositions - this.openPositions.filter((p) => p.status !== 'closed').length;
+      if (availableSlots <= 0) {
+        console.log(`[Bot] Max positions (${this.config.maxSimultaneousPositions}) reached`);
+        await this.monitorPositions();
+        return;
+      }
+
+      // Analyze top candidates with Claude; slight buffer in case some are skipped
+      const toAnalyze = newCandidates.slice(0, availableSlots + 2);
+
+      for (const pool of toAnalyze) {
+        const filledSlots = this.openPositions.filter((p) => p.status !== 'closed').length;
+        if (filledSlots >= this.config.maxSimultaneousPositions) break;
+
+        const analysis = await this.analyzeWithClaude(pool);
+        if (analysis) {
+          await this.openPosition(pool, analysis);
+        }
+      }
+
       await this.monitorPositions();
     } catch (err) {
       console.error('[Bot] Tick failed:', err instanceof Error ? err.message : 'Unknown error');
+    }
+  }
+
+  // Returns analysis if Claude approves, null to skip
+  async analyzeWithClaude(pool: PoolData): Promise<PoolAnalysisResult | null> {
+    try {
+      console.log(`[Bot] Analyzing ${pool.pair} with Claude...`);
+      const result = await analyzePool(pool, this.anthropic);
+
+      const claudeScoreNormalized = result.score * 10; // 0-10 → 0-100
+      const meetsThreshold = claudeScoreNormalized >= this.config.minScore;
+      const claudeSaysOpen = result.recommandation === 'open';
+
+      console.log(
+        `[Bot] Claude: ${pool.pair} | score=${result.score}/10 | rec=${result.recommandation} | threshold=${this.config.minScore}/100`
+      );
+      console.log(`[Bot] Reasoning: ${result.raisonnement}`);
+
+      if (meetsThreshold && claudeSaysOpen) {
+        return result;
+      }
+
+      const reason = !claudeSaysOpen ? `rec=${result.recommandation}` : `score ${claudeScoreNormalized} < threshold ${this.config.minScore}`;
+      console.log(`[Bot] Skip ${pool.pair}: ${reason}`);
+      return null;
+    } catch (err) {
+      console.error(`[Bot] Claude analysis failed for ${pool.pair}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      return null;
     }
   }
 
@@ -128,7 +178,6 @@ export class AutonomousBot {
   private filterCandidates(pools: PoolData[]): PoolData[] {
     let filtered = pools;
 
-    // Apply target pair filter if set
     if (this.config.targetPair) {
       filtered = pools.filter((p) => p.pair.toLowerCase().includes(this.config.targetPair!.toLowerCase()));
       if (filtered.length === 0) {
@@ -152,12 +201,11 @@ export class AutonomousBot {
       .map((c) => c.pool);
   }
 
-  private async openPosition(pool: PoolData): Promise<void> {
+  private async openPosition(pool: PoolData, analysis: PoolAnalysisResult): Promise<void> {
     try {
       const modeLabel = this.config.dryRun ? '[DRY RUN]' : '';
-      console.log(`[Bot] ${modeLabel} Opening position: ${pool.pair} (score threshold met)`);
+      console.log(`[Bot] ${modeLabel} Opening position: ${pool.pair} (Claude score=${analysis.score}/10, conviction=${analysis.conviction})`);
 
-      // Build transaction (placeholder)
       const tx = new Transaction({
         recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
         feePayer: this.keypair.publicKey,
@@ -169,19 +217,17 @@ export class AutonomousBot {
           { pubkey: this.keypair.publicKey, isSigner: true, isWritable: true },
           { pubkey: new PublicKey(pool.address), isSigner: false, isWritable: true },
         ],
-        data: Buffer.from([0]), // Placeholder
+        data: Buffer.from([0]),
       });
 
       let signature: string;
 
       if (this.config.dryRun) {
-        // Dry run: simulate transaction
         tx.sign(this.keypair);
         const serialized = tx.serialize();
         signature = `sim_${Buffer.from(serialized).toString('hex').slice(0, 40)}`;
-        console.log(`[Bot] ${modeLabel} Simulated tx would be: ${signature.slice(0, 20)}...`);
+        console.log(`[Bot] ${modeLabel} Simulated tx: ${signature.slice(0, 20)}...`);
       } else {
-        // Real mode: sign and send
         tx.sign(this.keypair);
         signature = await connection.sendRawTransaction(tx.serialize());
         await connection.confirmTransaction(signature);
@@ -195,6 +241,9 @@ export class AutonomousBot {
         signature,
         timestamp: Date.now(),
         status: this.config.dryRun ? 'pending' : 'open',
+        claudeScore: analysis.score,
+        claudeConviction: analysis.conviction,
+        claudeReasoning: analysis.raisonnement,
       };
 
       this.openPositions.push(position);
@@ -205,33 +254,35 @@ export class AutonomousBot {
   }
 
   private async monitorPositions(): Promise<void> {
-    if (this.openPositions.length === 0) return;
+    const active = this.openPositions.filter((p) => p.status !== 'closed');
+    if (active.length === 0) return;
 
-    console.log(`[Bot] Monitoring ${this.openPositions.length} position(s)`);
+    console.log(`[Bot] Monitoring ${active.length} position(s)`);
 
-    for (const pos of this.openPositions) {
+    for (const pos of active) {
       if (this.config.dryRun) {
-        console.log(`[Bot] [DRY RUN] Position ${pos.pair}: Simulated (${pos.capitalDeployed} SOL, status: ${pos.status})`);
+        console.log(`[Bot] [DRY RUN] ${pos.pair}: Simulated (${pos.capitalDeployed} SOL, status: ${pos.status})`);
         continue;
       }
 
       try {
         const tx = await connection.getTransaction(pos.signature);
         if (!tx) {
-          console.log(`[Bot] Position ${pos.pair}: Tx not yet confirmed`);
+          console.log(`[Bot] ${pos.pair}: Tx not yet confirmed`);
         } else {
-          console.log(`[Bot] Position ${pos.pair}: Active (${pos.capitalDeployed} SOL)`);
+          console.log(`[Bot] ${pos.pair}: Active (${pos.capitalDeployed} SOL)`);
         }
       } catch (err) {
-        console.warn(`[Bot] Could not verify position ${pos.pair}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        console.warn(`[Bot] Could not verify ${pos.pair}: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
     }
   }
 
   getStatus() {
+    const active = this.openPositions.filter((p) => p.status !== 'closed');
     return {
-      openPositions: this.openPositions.length,
-      totalCapitalDeployed: this.openPositions.reduce((sum, p) => sum + p.capitalDeployed, 0),
+      openPositions: active.length,
+      totalCapitalDeployed: active.reduce((sum, p) => sum + p.capitalDeployed, 0),
       positions: this.openPositions,
       config: this.config,
     };

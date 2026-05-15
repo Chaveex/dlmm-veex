@@ -68,4 +68,7 @@ export interface BotPosition {
   signature: string; // Transaction signature when opened
   timestamp: number; // Unix timestamp
   status: 'open' | 'closed' | 'pending';
+  claudeScore?: number; // 0-10 from Claude analysis
+  claudeConviction?: 'low' | 'mid' | 'high';
+  claudeReasoning?: string;
 }
