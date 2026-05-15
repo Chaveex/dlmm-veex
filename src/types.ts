@@ -11,6 +11,7 @@ export interface PoolData {
   poolAgeHours: number;
   tokenXMint: string;
   tokenYMint: string;
+  activeBinId?: number;
 }
 
 export interface RawPool {
@@ -59,6 +60,9 @@ export interface BotConfig {
   dryRun?: boolean; // Simulate transactions without broadcasting (default false)
   targetPair?: string; // Filter for specific pair (e.g., "WORLDCUP-SOL") - if set, only this pair is considered
   targetPoolAddress?: string; // Use specific pool address directly (skip name search)
+  rebalanceEnabled?: boolean; // Enable automatic rebalancing (default true)
+  rebalanceCooldownMs?: number; // Min ms between rebalances per position (default 300000 = 5min)
+  rangeWidthBins?: number; // ±bins around active price when opening/reopening (default 20)
 }
 
 export interface BotPosition {
@@ -68,4 +72,9 @@ export interface BotPosition {
   signature: string; // Transaction signature when opened
   timestamp: number; // Unix timestamp
   status: 'open' | 'closed' | 'pending';
+  rangeLowerBinId?: number;
+  rangeUpperBinId?: number;
+  activeBinAtOpen?: number;
+  lastRebalanceAt?: number;
+  rebalanceCount?: number;
 }

@@ -2,11 +2,14 @@ import axios from 'axios';
 import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
 import { BotConfig, BotPosition, PoolData } from './types';
 import { calculateFeeTvlRatio, calculateVolumeTvlRatio, calculatePoolAgeHours } from './poolMetrics';
+import { isOutOfRange, canRebalance, computeNewRange, performRebalance } from './rebalancer';
 
 const API_URL = 'https://dlmm.datapi.meteora.ag/pools';
 const RPC_URL = process.env.RPC_URL || 'https://api.mainnet-beta.solana.com';
 const connection = new Connection(RPC_URL, 'confirmed');
 const DLMM_PROGRAM_ID = '11111111111111111111111111111111';
+
+const REBALANCE_POLL_MS = 30_000;
 
 export class AutonomousBot {
   private config: BotConfig;
@@ -22,6 +25,7 @@ export class AutonomousBot {
     console.log(`  - Max capital per position: ${config.maxCapitalPerPosition} SOL`);
     console.log(`  - Max simultaneous positions: ${config.maxSimultaneousPositions}`);
     console.log(`  - Dry run: ${config.dryRun ? 'YES (simulation mode)' : 'NO (real transactions)'}`);
+    console.log(`  - Rebalance: ${config.rebalanceEnabled !== false ? 'ON' : 'OFF'} | cooldown ${(config.rebalanceCooldownMs ?? 300000) / 1000}s | ±${config.rangeWidthBins ?? 20} bins`);
     if (config.targetPoolAddress) console.log(`  - Target pool address: ${config.targetPoolAddress} (DIRECT)`);
     else if (config.targetPair) console.log(`  - Target pair: ${config.targetPair} (FILTERED)`);
     console.log(`  - Wallet: ${keypair.publicKey.toString()}`);
@@ -33,8 +37,13 @@ export class AutonomousBot {
     // Initial fetch
     await this.tick();
 
-    // Periodic updates
+    // Periodic pool scan
     setInterval(() => this.tick(), this.config.updateIntervalMs);
+
+    // Separate faster rebalance polling
+    if (this.config.rebalanceEnabled !== false) {
+      setInterval(() => this.rebalanceTick(), REBALANCE_POLL_MS);
+    }
   }
 
   private async tick(): Promise<void> {
@@ -42,7 +51,6 @@ export class AutonomousBot {
       let candidates: PoolData[] = [];
 
       if (this.config.targetPoolAddress) {
-        // Direct pool address mode: fetch and filter to this address only
         const pools = await this.fetchPools();
         const targetPool = pools.find((p) => p.address.toLowerCase() === this.config.targetPoolAddress!.toLowerCase());
 
@@ -54,7 +62,6 @@ export class AutonomousBot {
           return;
         }
       } else {
-        // Normal mode: fetch all and filter by pair/score
         const pools = await this.fetchPools();
         candidates = this.filterCandidates(pools);
         console.log(`[Bot] Tick: fetched ${pools.length} pools, ${candidates.length} candidates`);
@@ -70,6 +77,53 @@ export class AutonomousBot {
       await this.monitorPositions();
     } catch (err) {
       console.error('[Bot] Tick failed:', err instanceof Error ? err.message : 'Unknown error');
+    }
+  }
+
+  // Runs every 30s — checks if any open position is out of range and rebalances
+  async rebalanceTick(): Promise<void> {
+    const active = this.openPositions.filter((p) => p.status !== 'closed');
+    if (active.length === 0) return;
+
+    const cooldownMs = this.config.rebalanceCooldownMs ?? 300_000;
+
+    // Fetch fresh pool data to get current active bins
+    let pools: PoolData[];
+    try {
+      pools = await this.fetchPools();
+    } catch {
+      console.warn('[Rebalancer] Could not fetch pools for rebalance check');
+      return;
+    }
+
+    const poolMap = new Map(pools.map((p) => [p.address.toLowerCase(), p]));
+
+    for (const position of active) {
+      const pool = poolMap.get(position.poolAddress.toLowerCase());
+      if (!pool || pool.activeBinId === undefined) continue;
+
+      if (!isOutOfRange(position, pool.activeBinId)) continue;
+
+      if (!canRebalance(position, cooldownMs)) {
+        const remaining = Math.ceil((cooldownMs - (Date.now() - (position.lastRebalanceAt ?? 0))) / 1000);
+        console.log(`[Rebalancer] ${position.pair} out of range but cooldown: ${remaining}s remaining`);
+        continue;
+      }
+
+      console.log(`[Rebalancer] ${position.pair} out of range (active bin ${pool.activeBinId}, range [${position.rangeLowerBinId}..${position.rangeUpperBinId}]) — rebalancing`);
+
+      const result = await performRebalance(position, pool.activeBinId, this.config, this.keypair, connection);
+
+      if (result.rebalanced) {
+        position.rangeLowerBinId = result.newRangeLowerBinId;
+        position.rangeUpperBinId = result.newRangeUpperBinId;
+        position.activeBinAtOpen = result.newActiveBin;
+        position.lastRebalanceAt = Date.now();
+        position.rebalanceCount = (position.rebalanceCount ?? 0) + 1;
+        console.log(`[Rebalancer] ${position.pair} rebalanced #${position.rebalanceCount} → bins [${result.newRangeLowerBinId}..${result.newRangeUpperBinId}]`);
+      } else {
+        console.warn(`[Rebalancer] ${position.pair} rebalance skipped: ${result.reason}`);
+      }
     }
   }
 
@@ -106,6 +160,8 @@ export class AutonomousBot {
       const tokenXMint = typeof raw.token_x?.address === 'string' ? raw.token_x.address : '';
       const tokenYMint = typeof raw.token_y?.address === 'string' ? raw.token_y.address : '';
 
+      const activeBinId = raw.active_bin_id !== undefined ? Number(raw.active_bin_id) : undefined;
+
       return {
         address,
         pair,
@@ -119,6 +175,7 @@ export class AutonomousBot {
         poolAgeHours,
         tokenXMint,
         tokenYMint,
+        activeBinId,
       };
     } catch {
       return null;
@@ -128,7 +185,6 @@ export class AutonomousBot {
   private filterCandidates(pools: PoolData[]): PoolData[] {
     let filtered = pools;
 
-    // Apply target pair filter if set
     if (this.config.targetPair) {
       filtered = pools.filter((p) => p.pair.toLowerCase().includes(this.config.targetPair!.toLowerCase()));
       if (filtered.length === 0) {
@@ -157,7 +213,6 @@ export class AutonomousBot {
       const modeLabel = this.config.dryRun ? '[DRY RUN]' : '';
       console.log(`[Bot] ${modeLabel} Opening position: ${pool.pair} (score threshold met)`);
 
-      // Build transaction (placeholder)
       const tx = new Transaction({
         recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
         feePayer: this.keypair.publicKey,
@@ -169,24 +224,27 @@ export class AutonomousBot {
           { pubkey: this.keypair.publicKey, isSigner: true, isWritable: true },
           { pubkey: new PublicKey(pool.address), isSigner: false, isWritable: true },
         ],
-        data: Buffer.from([0]), // Placeholder
+        data: Buffer.from([0]),
       });
 
       let signature: string;
 
       if (this.config.dryRun) {
-        // Dry run: simulate transaction
         tx.sign(this.keypair);
         const serialized = tx.serialize();
         signature = `sim_${Buffer.from(serialized).toString('hex').slice(0, 40)}`;
         console.log(`[Bot] ${modeLabel} Simulated tx would be: ${signature.slice(0, 20)}...`);
       } else {
-        // Real mode: sign and send
         tx.sign(this.keypair);
         signature = await connection.sendRawTransaction(tx.serialize());
         await connection.confirmTransaction(signature);
         console.log(`[Bot] Position confirmed: Tx: ${signature}`);
       }
+
+      // Compute initial range around current active bin
+      const rangeWidth = this.config.rangeWidthBins ?? 20;
+      const activeBin = pool.activeBinId;
+      const range = activeBin !== undefined ? computeNewRange(activeBin, rangeWidth) : undefined;
 
       const position: BotPosition = {
         poolAddress: pool.address,
@@ -195,10 +253,15 @@ export class AutonomousBot {
         signature,
         timestamp: Date.now(),
         status: this.config.dryRun ? 'pending' : 'open',
+        ...(range && {
+          rangeLowerBinId: range.lower,
+          rangeUpperBinId: range.upper,
+          activeBinAtOpen: activeBin,
+        }),
       };
 
       this.openPositions.push(position);
-      console.log(`[Bot] ${modeLabel} Position opened: ${pool.pair} | Capital: ${this.config.maxCapitalPerPosition} SOL`);
+      console.log(`[Bot] ${modeLabel} Position opened: ${pool.pair} | Capital: ${this.config.maxCapitalPerPosition} SOL${range ? ` | Range bins [${range.lower}..${range.upper}]` : ''}`);
     } catch (err) {
       console.error(`[Bot] Failed to open position: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }

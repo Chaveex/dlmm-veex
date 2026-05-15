@@ -27,6 +27,9 @@ function loadConfig(): BotConfig {
   if (process.env.BOT_DRY_RUN === 'true') config.dryRun = true;
   if (process.env.BOT_TARGET_PAIR) config.targetPair = process.env.BOT_TARGET_PAIR;
   if (process.env.BOT_TARGET_POOL_ADDRESS) config.targetPoolAddress = process.env.BOT_TARGET_POOL_ADDRESS;
+  if (process.env.BOT_REBALANCE_ENABLED === 'false') config.rebalanceEnabled = false;
+  if (process.env.BOT_REBALANCE_COOLDOWN_MS) config.rebalanceCooldownMs = parseInt(process.env.BOT_REBALANCE_COOLDOWN_MS);
+  if (process.env.BOT_RANGE_WIDTH_BINS) config.rangeWidthBins = parseInt(process.env.BOT_RANGE_WIDTH_BINS);
 
   return config as BotConfig;
 }
