@@ -163,18 +163,26 @@ What happens:
 
 Logs show `[DRY RUN]` prefix to distinguish from real trades.
 
-### Target Pair Filtering
+### Target Pool - Two Methods
 
-Test specific pool only:
-
+**Method 1: By pair name (search)**
 ```bash
 BOT_TARGET_PAIR='WORLDCUP-SOL' BOT_DRY_RUN=true npm run bot
 ```
-
 - Filter to single pair (case-insensitive substring match)
-- Useful for strategy validation before full deployment
-- Format: use actual pool names (e.g., "WORLDCUP-SOL", "SOL-USDC")
+- Fetches pools, searches by name
+- Format: actual pool names (e.g., "WORLDCUP-SOL", "SOL-USDC")
 - Config shows "(FILTERED)" when active
+
+**Method 2: By pool address (direct, recommended for testing)**
+```bash
+BOT_TARGET_POOL_ADDRESS='33eum82LaAhtv5YkUq1BdwEviSErH5CnFxqVNLT5pump' BOT_DRY_RUN=true npm run bot
+```
+- Direct pool Solana address (skip name search)
+- Faster, more reliable (no name mismatches)
+- Format: 43-44 char base58 public key
+- Config shows "(DIRECT)" when active
+- Takes precedence over BOT_TARGET_PAIR if both set
 
 Example test run:
 ```
