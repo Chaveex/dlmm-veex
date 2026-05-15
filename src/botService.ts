@@ -22,6 +22,7 @@ export class AutonomousBot {
     console.log(`  - Max capital per position: ${config.maxCapitalPerPosition} SOL`);
     console.log(`  - Max simultaneous positions: ${config.maxSimultaneousPositions}`);
     console.log(`  - Dry run: ${config.dryRun ? 'YES (simulation mode)' : 'NO (real transactions)'}`);
+    if (config.targetPair) console.log(`  - Target pair: ${config.targetPair} (FILTERED)`);
     console.log(`  - Wallet: ${keypair.publicKey.toString()}`);
   }
 
@@ -108,7 +109,18 @@ export class AutonomousBot {
   }
 
   private filterCandidates(pools: PoolData[]): PoolData[] {
-    return pools
+    let filtered = pools;
+
+    // Apply target pair filter if set
+    if (this.config.targetPair) {
+      filtered = pools.filter((p) => p.pair.toLowerCase().includes(this.config.targetPair!.toLowerCase()));
+      if (filtered.length === 0) {
+        console.log(`[Bot] Target pair '${this.config.targetPair}' not found in current pools`);
+        return [];
+      }
+    }
+
+    return filtered
       .map((p) => {
         const vtvScore = Math.min((p.volumeTvlRatio / 2) * 100, 100);
         const aprScore = Math.min((p.feeTvlRatioPercent / 3) * 100, 100);
